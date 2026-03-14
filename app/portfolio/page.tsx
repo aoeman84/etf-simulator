@@ -19,11 +19,19 @@ interface Purchase {
   ticker: string
   amountKRW: number
   fxRate: number
-  currentPrice?: number
-  currentFxRate?: number
 }
 
 type SubTab = 'saved' | 'records'
+
+// 디스켓 SVG — My PF 저장목록 아이콘과 동일
+function FloppyIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor">
+      <path d="M11 2H9v3h2V2z"/>
+      <path d="M1.5 0h11.586a1.5 1.5 0 0 1 1.06.44l1.415 1.414A1.5 1.5 0 0 1 16 2.914V14.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5v-13A1.5 1.5 0 0 1 1.5 0zM1 1.5v13a.5.5 0 0 0 .5.5H2v-4.5A1.5 1.5 0 0 1 3.5 9h9a1.5 1.5 0 0 1 1.5 1.5V15h.5a.5.5 0 0 0 .5-.5V2.914a.5.5 0 0 0-.146-.353l-1.415-1.415A.5.5 0 0 0 13.086 1H13v3.5A1.5 1.5 0 0 1 11.5 6h-7A1.5 1.5 0 0 1 3 4.5V1H1.5a.5.5 0 0 0-.5.5zm3 4a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V1H4v4.5zM3 15h10v-4.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5V15z"/>
+    </svg>
+  )
+}
 
 export default function PortfolioPage() {
   const { status } = useSession()
@@ -35,13 +43,13 @@ export default function PortfolioPage() {
   const [portfolios, setPortfolios] = useState<SavedPortfolio[]>([])
   const [loadingPF, setLoadingPF] = useState(true)
 
-  // 실제 매수 기록 (localStorage 저장)
+  // 실제 매수 기록
   const [purchases, setPurchases] = useState<Purchase[]>([])
   const [form, setForm] = useState({ date: '', ticker: 'SCHD', amount: '', fxRate: '1350' })
+  const [fxLoading, setFxLoading] = useState(false)
   const [currentFxRate, setCurrentFxRate] = useState(1350)
   const [toast, setToast] = useState('')
 
-  // 저장된 포트폴리오 불러오기
   useEffect(() => {
     fetch('/api/portfolio')
       .then(r => r.json())
@@ -49,7 +57,6 @@ export default function PortfolioPage() {
       .catch(() => setLoadingPF(false))
   }, [])
 
-  // 실제 기록 localStorage 불러오기
   useEffect(() => {
     try {
       const saved = localStorage.getItem('etf_actual_records')
@@ -57,17 +64,37 @@ export default function PortfolioPage() {
     } catch {}
   }, [])
 
-  // 실시간 환율
+  // 현재 환율
   useEffect(() => {
     fetch('/api/fx-rate').then(r => r.json()).then(d => {
       if (d.rate) setCurrentFxRate(d.rate)
     }).catch(() => {})
   }, [])
 
-  // 매수 기록 저장 (localStorage)
+  // 날짜 변경 시 해당 날짜 환율 자동 조회
+  async function handleDateChange(date: string) {
+    setForm(f => ({ ...f, date }))
+    if (!date) return
+
+    setFxLoading(true)
+    try {
+      const res = await fetch(`/api/fx-rate-history?date=${date}`)
+      const data = await res.json()
+      if (data.rate) {
+        setForm(f => ({ ...f, date, fxRate: String(data.rate) }))
+      }
+    } catch {}
+    setFxLoading(false)
+  }
+
   function savePurchases(list: Purchase[]) {
     setPurchases(list)
     try { localStorage.setItem('etf_actual_records', JSON.stringify(list)) } catch {}
+  }
+
+  function showToast(msg: string) {
+    setToast(msg)
+    setTimeout(() => setToast(''), 2500)
   }
 
   function addPurchase() {
@@ -81,6 +108,7 @@ export default function PortfolioPage() {
     }]
     savePurchases(next)
     setForm(f => ({ ...f, date: '', amount: '' }))
+    showToast('매수 기록이 추가됐어요')
   }
 
   function removePurchase(id: string) {
@@ -92,7 +120,6 @@ export default function PortfolioPage() {
     setPortfolios(prev => prev.filter(p => p.id !== id))
   }
 
-  // 수익률 계산 (현재 실시간 환율 반영)
   function calcReturn(p: Purchase) {
     const etf = ETF_DATA[p.ticker]
     const usdInvested = (p.amountKRW * 10000) / p.fxRate
@@ -107,7 +134,6 @@ export default function PortfolioPage() {
   const totalCurrent = purchases.reduce((s, p) => s + calcReturn(p).currentValueKRW, 0)
   const totalGainPct = totalInvested > 0 ? ((totalCurrent - totalInvested) / totalInvested) * 100 : 0
 
-  // 티커별 집계
   const tickerSummary = purchases.reduce<Record<string, { invested: number; current: number }>>((acc, p) => {
     const { currentValueKRW } = calcReturn(p)
     if (!acc[p.ticker]) acc[p.ticker] = { invested: 0, current: 0 }
@@ -119,29 +145,42 @@ export default function PortfolioPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
+
+      {/* 토스트 */}
+      {toast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
+          ✅ {toast}
+        </div>
+      )}
+
       <main className="max-w-4xl mx-auto px-4 py-4">
 
-        {/* 서브 탭 — overflow 방지 */}
-        <div className="flex bg-white rounded-xl border border-slate-200 p-1 gap-1 mb-5 w-full">
-          <SubTabBtn active={subTab === 'saved'} onClick={() => setSubTab('saved')}>
-            💾 저장 목록
-          </SubTabBtn>
-          <SubTabBtn active={subTab === 'records'} onClick={() => setSubTab('records')}>
-            📒 매수 기록
+        {/* ── 서브 탭 — 완전 고정 너비 분할 ── */}
+        <div className="grid grid-cols-2 gap-1 bg-white rounded-xl border border-slate-200 p-1 mb-5">
+          <button
+            onClick={() => setSubTab('saved')}
+            className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              subTab === 'saved' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'
+            }`}
+          >
+            <FloppyIcon size={13} />
+            <span>저장 목록</span>
+          </button>
+          <button
+            onClick={() => setSubTab('records')}
+            className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              subTab === 'records' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'
+            }`}
+          >
+            <span>📒</span>
+            <span>매수 기록</span>
             {purchases.length > 0 && (
-              <span className="ml-1 bg-blue-100 text-blue-600 text-xs px-1.5 py-0.5 rounded-full flex-shrink-0">
+              <span className="bg-blue-100 text-blue-600 text-xs w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
                 {purchases.length}
               </span>
             )}
-          </SubTabBtn>
+          </button>
         </div>
-
-        {/* 토스트 팝업 */}
-        {toast && (
-          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 animate-fade-in">
-            <span>✅</span> {toast}
-          </div>
-        )}
 
         {/* ─── 저장된 포트폴리오 ─── */}
         {subTab === 'saved' && (
@@ -180,16 +219,14 @@ export default function PortfolioPage() {
                             )}
                             {pf.settings.scenario?.mode && (
                               <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
-                                {{ optimistic:'🟢 낙관', neutral:'🟡 중립', pessimistic:'🔴 비관', custom:'⚙️ 직접' }[pf.settings.scenario.mode as string] ?? pf.settings.scenario.mode}
+                                {{ optimistic: '🟢 낙관', neutral: '🟡 중립', pessimistic: '🔴 비관', custom: '⚙️ 직접' }[pf.settings.scenario.mode as string] ?? pf.settings.scenario.mode}
                               </span>
                             )}
                           </div>
                         )}
                       </div>
-                      <button
-                        onClick={() => deletePortfolio(pf.id)}
-                        className="text-slate-300 hover:text-red-400 transition-colors text-xl leading-none flex-shrink-0 mt-0.5"
-                      >
+                      <button onClick={() => deletePortfolio(pf.id)}
+                        className="text-slate-300 hover:text-red-400 transition-colors text-xl leading-none flex-shrink-0 mt-0.5">
                         ✕
                       </button>
                     </div>
@@ -203,7 +240,6 @@ export default function PortfolioPage() {
         {/* ─── 실제 매수 기록 ─── */}
         {subTab === 'records' && (
           <div className="space-y-4">
-
             {/* 입력 폼 */}
             <div className="card p-5">
               <h3 className="text-sm font-semibold text-slate-700 mb-4">매수 내역 추가</h3>
@@ -211,7 +247,7 @@ export default function PortfolioPage() {
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">날짜</label>
                   <input type="date" value={form.date}
-                    onChange={e => setForm(f => ({ ...f, date: e.target.value }))}
+                    onChange={e => handleDateChange(e.target.value)}
                     className="input text-sm" />
                 </div>
                 <div>
@@ -228,8 +264,14 @@ export default function PortfolioPage() {
                     className="input text-sm" inputMode="numeric" />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 mb-1 block">당시 환율</label>
-                  <input type="number" placeholder="1350" value={form.fxRate}
+                  <label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                    당시 환율
+                    {fxLoading && <span className="text-blue-400 text-xs">조회 중...</span>}
+                    {!fxLoading && form.date && form.fxRate !== '1350' && (
+                      <span className="text-green-500 text-xs">● 자동</span>
+                    )}
+                  </label>
+                  <input type="number" value={form.fxRate}
                     onChange={e => setForm(f => ({ ...f, fxRate: e.target.value }))}
                     className="input text-sm" inputMode="numeric" />
                 </div>
@@ -241,9 +283,9 @@ export default function PortfolioPage() {
               </button>
             </div>
 
-            {/* 총 요약 */}
             {purchases.length > 0 && (
               <>
+                {/* 전체 요약 */}
                 <div className="card p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-slate-700">전체 요약</h3>
@@ -266,7 +308,6 @@ export default function PortfolioPage() {
                     </div>
                   </div>
 
-                  {/* 티커별 비중 */}
                   {Object.keys(tickerSummary).length > 1 && (
                     <div className="mt-4 pt-4 border-t border-slate-100">
                       <div className="text-xs text-slate-500 mb-2">ETF별 현황</div>
@@ -280,8 +321,7 @@ export default function PortfolioPage() {
                               <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: etf?.color ?? '#94a3b8' }} />
                               <span className="text-sm font-medium w-12">{t}</span>
                               <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full"
-                                  style={{ width: `${weight}%`, background: etf?.color ?? '#94a3b8' }} />
+                                <div className="h-full rounded-full" style={{ width: `${weight}%`, background: etf?.color ?? '#94a3b8' }} />
                               </div>
                               <span className="text-xs text-slate-500 w-10 text-right">{weight.toFixed(0)}%</span>
                               <span className={`text-xs font-semibold w-14 text-right ${gainPct >= 0 ? 'text-green-600' : 'text-red-500'}`}>
@@ -295,46 +335,43 @@ export default function PortfolioPage() {
                   )}
                 </div>
 
-                {/* 개별 내역 */}
+                {/* 매수 내역 리스트 */}
                 <div className="card overflow-hidden">
                   <div className="px-4 py-3 border-b border-slate-100">
                     <h3 className="text-sm font-medium text-slate-700">매수 내역</h3>
                   </div>
                   <div className="divide-y divide-slate-100">
-                    {purchases
-                      .slice()
-                      .sort((a, b) => b.date.localeCompare(a.date))
-                      .map(p => {
-                        const { currentValueKRW, gainPct } = calcReturn(p)
-                        return (
-                          <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
-                            <div className="w-2 h-2 rounded-full flex-shrink-0"
-                              style={{ background: ETF_DATA[p.ticker]?.color ?? '#94a3b8' }} />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 text-sm">
-                                <span className="font-semibold">{p.ticker}</span>
-                                <span className="text-slate-400 text-xs">{p.date}</span>
-                                <span className="text-slate-600">{p.amountKRW.toLocaleString()}만원</span>
-                                <span className="text-slate-300 text-xs">{p.fxRate.toLocaleString()}원</span>
-                              </div>
-                              <div className="flex gap-3 text-xs mt-0.5">
-                                <span className="text-slate-400">현재 {fmtKRW(currentValueKRW)}</span>
-                                <span className={gainPct >= 0 ? 'text-blue-500 font-semibold' : 'text-red-500 font-semibold'}>
-                                  {gainPct >= 0 ? '▲' : '▼'} {Math.abs(gainPct).toFixed(1)}%
-                                </span>
-                              </div>
+                    {purchases.slice().sort((a, b) => b.date.localeCompare(a.date)).map(p => {
+                      const { currentValueKRW, gainPct } = calcReturn(p)
+                      return (
+                        <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
+                          <div className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: ETF_DATA[p.ticker]?.color ?? '#94a3b8' }} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="font-semibold">{p.ticker}</span>
+                              <span className="text-slate-400 text-xs">{p.date}</span>
+                              <span className="text-slate-600">{p.amountKRW.toLocaleString()}만원</span>
+                              <span className="text-slate-300 text-xs">{p.fxRate.toLocaleString()}원</span>
                             </div>
-                            <button onClick={() => removePurchase(p.id)}
-                              className="text-slate-300 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0">
-                              ✕
-                            </button>
+                            <div className="flex gap-3 text-xs mt-0.5">
+                              <span className="text-slate-400">현재 {fmtKRW(currentValueKRW)}</span>
+                              <span className={gainPct >= 0 ? 'text-blue-500 font-semibold' : 'text-red-500 font-semibold'}>
+                                {gainPct >= 0 ? '▲' : '▼'} {Math.abs(gainPct).toFixed(1)}%
+                              </span>
+                            </div>
                           </div>
-                        )
-                      })}
+                          <button onClick={() => removePurchase(p.id)}
+                            className="text-slate-300 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0">
+                            ✕
+                          </button>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
                 <p className="text-xs text-slate-400 text-center">
-                  * 현재 기준가 + 실시간 환율 기반 추정치 · 실제와 다를 수 있음 · 기록은 이 기기 브라우저에 저장됩니다
+                  * 현재 기준가 + 실시간 환율 기반 추정치 · 이 기기 브라우저에 저장됩니다
                 </p>
               </>
             )}
@@ -343,27 +380,13 @@ export default function PortfolioPage() {
               <div className="card p-10 text-center">
                 <div className="text-3xl mb-3">📒</div>
                 <div className="text-slate-500 text-sm mb-1">매수 내역을 추가해보세요</div>
-                <div className="text-slate-400 text-xs">실제 투자 기록을 입력하면 현재 수익률을 확인할 수 있어요</div>
+                <div className="text-slate-400 text-xs">날짜를 선택하면 당시 환율을 자동으로 불러와요</div>
               </div>
             )}
           </div>
         )}
-
       </main>
       <Footer />
     </div>
-  )
-}
-
-function SubTabBtn({ active, onClick, children }: {
-  active: boolean; onClick: () => void; children: React.ReactNode
-}) {
-  return (
-    <button onClick={onClick}
-      className={`flex-1 min-w-0 text-sm py-2.5 px-2 rounded-lg font-medium transition-all flex items-center justify-center gap-1 overflow-hidden ${
-        active ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'
-      }`}>
-      <span className="truncate">{children}</span>
-    </button>
   )
 }
