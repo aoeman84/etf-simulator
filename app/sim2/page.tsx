@@ -99,6 +99,24 @@ export default function Sim2Page() {
     ? Math.min(100, (afterTaxMonthly / (targetDiv * 10000)) * 100)
     : 0
 
+  const [shared, setShared] = useState(false)
+  async function shareResult() {
+    if (!last) return
+    const text =
+      `🎯 ETF 목표 역산 결과\n\n` +
+      `📌 ${ticker} · ${years}년 · 목표 월배당 ${targetDiv.toLocaleString()}만원\n` +
+      `💰 필요 월 투자금: ${required.toLocaleString()}만원\n` +
+      `🏦 포트폴리오: ${fmtKRW(last.portfolioKRW)}\n` +
+      `📊 수익률: +${last.gainPct.toFixed(1)}%\n\n` +
+      `🔗 https://etf-simulator-henna.vercel.app`
+    if (navigator.share) {
+      try { await navigator.share({ title: 'ETF 목표 역산', text }); return } catch {}
+    }
+    await navigator.clipboard.writeText(text)
+    setShared(true)
+    setTimeout(() => setShared(false), 2500)
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar
@@ -217,14 +235,22 @@ export default function Sim2Page() {
             <div className="card p-6">
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-sm font-medium text-slate-500">목표 달성을 위한 월 투자금</h2>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={shareResult}
+                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${shared ? 'border-green-300 bg-green-50 text-green-600' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`}
+                  >
+                    {shared ? '✅ 복사됨' : <><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>공유</>}
+                  </button>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
                   scenario.mode === 'optimistic' ? 'bg-green-100 text-green-700' :
                   scenario.mode === 'pessimistic' ? 'bg-red-100 text-red-700' :
                   scenario.mode === 'neutral' ? 'bg-amber-100 text-amber-700' :
                   'bg-blue-100 text-blue-700'
                 }`}>
-                  {{ optimistic:'🟢 낙관', neutral:'🟡 중립', pessimistic:'🔴 비관', custom:'⚙️ 직접설정' }[scenario.mode]}
-                </span>
+                    {{ optimistic:'🟢 낙관', neutral:'🟡 중립', pessimistic:'🔴 비관', custom:'⚙️ 직접설정' }[scenario.mode]}
+                  </span>
+                </div>
               </div>
 
               <div className="text-center mb-6">

@@ -20,6 +20,7 @@ export default function ComparePage() {
   const [fxRate, setFxRate] = useState(1350)
   const [drip, setDrip] = useState(true)
   const [compareResults, setCompareResults] = useState<Record<string, YearResult[]>>({})
+  const [shared, setShared] = useState(false)
 
   // 실시간 환율
   useEffect(() => {
@@ -35,6 +36,22 @@ export default function ComparePage() {
     })
     setCompareResults(res)
   }, [selected, monthly, years, fxRate, drip])
+
+  async function shareResult() {
+    const lines = selected.map(t => {
+      const r = compareResults[t]
+      const last = r?.[r.length - 1]
+      if (!last) return ''
+      return `${t}: 포트폴리오 ${fmtKRW(last.portfolioKRW)} · 월배당 ${fmtKRW(last.monthlyDivKRW)}`
+    }).filter(Boolean).join('\n')
+    const text = `📊 ETF 비교 시뮬레이션 결과\n\n${lines}\n\n⏱ ${years}년 · 월 ${monthly.toLocaleString()}만원\n\n🔗 https://etf-simulator-henna.vercel.app`
+    if (navigator.share) {
+      try { await navigator.share({ title: 'ETF 비교', text }); return } catch {}
+    }
+    await navigator.clipboard.writeText(text)
+    setShared(true)
+    setTimeout(() => setShared(false), 2500)
+  }
 
   function toggleTicker(t: string) {
     setSelected(prev =>
@@ -94,6 +111,15 @@ export default function ComparePage() {
 
           {/* Charts & Table */}
           <div className="lg:col-span-3 space-y-6">
+            {/* 공유 버튼 */}
+            <div className="flex justify-end">
+              <button
+                onClick={shareResult}
+                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${shared ? 'border-green-300 bg-green-50 text-green-600' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`}
+              >
+                {shared ? '✅ 복사됨' : <><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>결과 공유</>}
+              </button>
+            </div>
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {selected.map(t => {

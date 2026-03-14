@@ -9,7 +9,6 @@ import TaxSummary from '@/components/TaxSummary'
 import InstallPrompt from '@/components/InstallPrompt'
 import Footer from '@/components/Footer'
 import ScenarioModal, { ScenarioSettings } from '@/components/ScenarioModal'
-import ShareButton from '@/components/ShareButton'
 import MultiETF, { ETFAllocation } from '@/components/MultiETF'
 import { simulateMulti, fmtKRW } from '@/lib/simulator'
 import { DEFAULT_TAX } from '@/lib/tax'
@@ -38,6 +37,7 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('simulator')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [shared, setShared] = useState(false)
   const [selectedYear, setSelectedYear] = useState<number>(10)
   const [fxLoaded, setFxLoaded] = useState(false)
 
@@ -78,29 +78,32 @@ export default function DashboardPage() {
     setTimeout(() => setSaved(false), 3000)
   }
 
+  async function shareResult() {
+    if (!last) return
+    const tickers = allocations.map(a => `${a.ticker} ${a.monthly}만원`).join(' + ')
+    const text =
+      `📈 ETF 적립식 투자 시뮬레이션 결과\n\n` +
+      `💼 ${tickers} · ${years}년\n` +
+      `🏦 포트폴리오: ${fmtKRW(last.portfolioKRW)}\n` +
+      `💰 월 배당: ${fmtKRW(tax.enabled ? last.tax.afterTaxMonthlyDivKRW : last.monthlyDivKRW)}${tax.enabled ? ' (세후)' : ''}\n` +
+      `📊 수익률: +${last.gainPct.toFixed(1)}%\n\n` +
+      `🔗 https://etf-simulator-henna.vercel.app`
+    if (navigator.share) {
+      try { await navigator.share({ title: 'ETF 시뮬레이션 결과', text }); return } catch {}
+    }
+    await navigator.clipboard.writeText(text)
+    setShared(true)
+    setTimeout(() => setShared(false), 2500)
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar
-        titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} />}
-        shareSlot={
-          <ShareButton
-            results={results}
-            allocations={allocations}
-            years={years}
-            taxEnabled={tax.enabled}
-          />
-        }
-        rightSlot={
-          <button onClick={savePortfolio} disabled={saving} className="btn-primary text-sm flex items-center gap-1.5">
-            {saved ? '✓ 저장됨' : saving ? '저장 중...' : '💾 저장'}
-          </button>
-        }
-      />
+      <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} />} />
       <InstallPrompt />
       <main className="max-w-6xl mx-auto px-4 py-4">
-
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* 왼쪽 패널 */}
+
+          {/* ── 왼쪽 패널 ── */}
           <div className="space-y-4">
             <div className="flex bg-white rounded-xl border border-slate-200 p-1 gap-1">
               <TabBtn active={activeTab === 'simulator'} onClick={() => setActiveTab('simulator')}>
@@ -114,12 +117,48 @@ export default function DashboardPage() {
 
             {activeTab === 'simulator' && (
               <div className="card p-5 space-y-5">
-                <MultiETF allocations={allocations} onChange={setAllocations} />
+                {/* ETF 선택 헤더 + 저장/공유 버튼 */}
+                <div>
+                  <MultiETF allocations={allocations} onChange={setAllocations} />
+                </div>
+
+                {/* 저장 / 공유 버튼 — ETF 선택 바로 아래 */}
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={savePortfolio}
+                    disabled={saving}
+                    className="flex-1 flex items-center justify-center gap-1.5 text-sm font-medium py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-all"
+                  >
+                    {saved ? '✓ 저장됨' : saving ? '저장 중...' : '💾 저장'}
+                  </button>
+                  <button
+                    onClick={shareResult}
+                    className={`flex items-center justify-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border transition-all ${
+                      shared
+                        ? 'border-green-300 bg-green-50 text-green-600'
+                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {shared ? (
+                      <>✅ 복사됨</>
+                    ) : (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                          <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+                        </svg>
+                        공유
+                      </>
+                    )}
+                  </button>
+                </div>
+
                 <div className="border-t border-slate-100 pt-4 space-y-4">
                   <NumberSlider label="투자 기간" value={years} min={1} max={30} step={1}
                     display={`${years}년`} unit="년" onChange={setYears} />
+                  {/* ✅ 환율: label은 고정 "환율", 실시간 표시는 highlight prop으로만 */}
                   <NumberSlider
-                    label={fxLoaded ? '환율 ● 실시간' : '환율 (원/달러)'}
+                    label="환율"
                     value={fxRate} min={1000} max={1800} step={10}
                     display={`${fxRate.toLocaleString()}원`} unit="원" onChange={setFxRate}
                     highlight={fxLoaded}
@@ -151,9 +190,8 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* 오른쪽 */}
+          {/* ── 오른쪽 ── */}
           <div className="lg:col-span-2 space-y-5">
-            {/* 핵심 지표 */}
             {last && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <StatCard label="총 투자원금" value={fmtKRW(last.invested)} />
@@ -168,7 +206,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* 인플레이션 안내 */}
             {scenario.inflationRate > 0 && last && (
               <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 flex items-center gap-3">
                 <span className="text-lg">💸</span>
@@ -180,7 +217,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* 세전/세후 비교 */}
             {tax.enabled && last && (
               <div className="bg-gradient-to-r from-blue-50 to-red-50 border border-slate-200 rounded-2xl p-4">
                 <div className="text-xs font-semibold text-slate-500 mb-3">세전 vs 세후 비교 ({years}년차)</div>
@@ -205,7 +241,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* 차트 */}
             <div className="card p-5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-medium text-slate-500">연도별 자산 성장</h2>
@@ -221,7 +256,6 @@ export default function DashboardPage() {
               <SimChart results={results} taxEnabled={tax.enabled} />
             </div>
 
-            {/* 테이블 */}
             <div className="card overflow-hidden">
               <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' as any }}>
                 <table className="w-full text-sm" style={{ minWidth: '500px' }}>
@@ -306,8 +340,9 @@ function NumberSlider({ label, value, min, max, step, display, unit, onChange, h
   return (
     <div>
       <div className="flex justify-between mb-1">
-        <label className="text-sm font-medium text-slate-700 flex items-center gap-1">
+        <label className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
           {label}
+          {/* highlight일 때만 실시간 표시 — label prop에는 "실시간" 안 넣을 것 */}
           {highlight && <span className="text-xs text-green-500 font-normal">● 실시간</span>}
         </label>
         <span className="text-sm font-semibold text-blue-600">{display}</span>
