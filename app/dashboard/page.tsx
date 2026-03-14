@@ -11,6 +11,7 @@ import Footer from '@/components/Footer'
 import ScenarioModal, { ScenarioSettings } from '@/components/ScenarioModal'
 import MultiETF, { ETFAllocation } from '@/components/MultiETF'
 import { simulateMulti, fmtKRW } from '@/lib/simulator'
+import { usePersistedState } from '@/lib/usePersistedState'
 import { DEFAULT_TAX } from '@/lib/tax'
 import { TaxSettings, YearResult } from '@/types'
 
@@ -27,12 +28,12 @@ export default function DashboardPage() {
   const { status } = useSession()
   if (status === 'unauthenticated') redirect('/login')
 
-  const [allocations, setAllocations] = useState<ETFAllocation[]>([{ ticker: 'SCHD', monthly: 500 }])
-  const [years, setYears] = useState(10)
+  const [allocations, setAllocations] = usePersistedState<ETFAllocation[]>('sim_allocations', [{ ticker: 'SCHD', monthly: 500 }])
+  const [years, setYears] = usePersistedState<number>('sim_years', 10)
+  const [drip, setDrip] = usePersistedState<boolean>('sim_drip', true)
+  const [tax, setTax] = usePersistedState<TaxSettings>('sim_tax', DEFAULT_TAX)
+  const [scenario, setScenario] = usePersistedState<ScenarioSettings>('sim_scenario', DEFAULT_SCENARIO)
   const [fxRate, setFxRate] = useState(1350)
-  const [drip, setDrip] = useState(true)
-  const [tax, setTax] = useState<TaxSettings>(DEFAULT_TAX)
-  const [scenario, setScenario] = useState<ScenarioSettings>(DEFAULT_SCENARIO)
   const [results, setResults] = useState<YearResult[]>([])
   const [activeTab, setActiveTab] = useState<Tab>('simulator')
   const [saving, setSaving] = useState(false)
@@ -150,8 +151,7 @@ export default function DashboardPage() {
                           </svg>
                         ) : (
                           <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
-                            <path d="M11 2H9v3h2V2z"/>
-                            <path d="M1.5 0h11.586a1.5 1.5 0 0 1 1.06.44l1.415 1.414A1.5 1.5 0 0 1 16 2.914V14.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 0 14.5v-13A1.5 1.5 0 0 1 1.5 0zM1 1.5v13a.5.5 0 0 0 .5.5H2v-4.5A1.5 1.5 0 0 1 3.5 9h9a1.5 1.5 0 0 1 1.5 1.5V15h.5a.5.5 0 0 0 .5-.5V2.914a.5.5 0 0 0-.146-.353l-1.415-1.415A.5.5 0 0 0 13.086 1H13v3.5A1.5 1.5 0 0 1 11.5 6h-7A1.5 1.5 0 0 1 3 4.5V1H1.5a.5.5 0 0 0-.5.5zm3 4a.5.5 0 0 0 .5.5h7a.5.5 0 0 0 .5-.5V1H4v4.5zM3 15h10v-4.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5V15z"/>
+                            <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h4.5a.5.5 0 0 1 0 1H2z"/>
                           </svg>
                         )}
                       </button>

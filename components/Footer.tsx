@@ -12,7 +12,7 @@ export default function Footer() {
           본 시뮬레이터는 투자 참고용이며 실제 투자 조언이 아닙니다.
         </p>
         {/* 버전 — 눈에 안 띄게 */}
-        <p className="text-xs text-slate-300 select-none">v1.10</p>
+        <p className="text-xs text-slate-300 select-none">v1.11</p>
       </div>
     </footer>
   )

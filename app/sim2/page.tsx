@@ -5,8 +5,10 @@ import { redirect } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import TaxPanel from '@/components/TaxPanel'
+import NumberSlider from '@/components/NumberSlider'
 import ScenarioModal, { ScenarioSettings } from '@/components/ScenarioModal'
 import { ETF_DATA, fmtKRW, simulate } from '@/lib/simulator'
+import { usePersistedState } from '@/lib/usePersistedState'
 import { DEFAULT_TAX } from '@/lib/tax'
 import { TaxSettings } from '@/types'
 
@@ -21,22 +23,17 @@ export default function Sim2Page() {
   const { status } = useSession()
   if (status === 'unauthenticated') redirect('/login')
 
-  // 목표 설정
-  const [targetDiv, setTargetDiv] = useState(300)       // 목표 월 배당 (만원, 세후)
-  const [ticker, setTicker] = useState('SCHD')
-  const [years, setYears] = useState(10)
+  // 탭 이동해도 유지되는 상태
+  const [targetDiv, setTargetDiv] = usePersistedState<number>('sim2_targetDiv', 300)
+  const [ticker, setTicker] = usePersistedState<string>('sim2_ticker', 'SCHD')
+  const [years, setYears] = usePersistedState<number>('sim2_years', 10)
+  const [drip, setDrip] = usePersistedState<boolean>('sim2_drip', true)
+  const [tax, setTax] = usePersistedState<TaxSettings>('sim2_tax', DEFAULT_TAX)
+  const [scenario, setScenario] = usePersistedState<ScenarioSettings>('sim2_scenario', DEFAULT_SCENARIO)
+  const [activePanel, setActivePanel] = usePersistedState<'goal' | 'tax'>('sim2_panel', 'goal')
+
   const [fxRate, setFxRate] = useState(1350)
-  const [drip, setDrip] = useState(true)
   const [fxLoaded, setFxLoaded] = useState(false)
-
-  // 세금 설정 (Sim²용 독립)
-  const [tax, setTax] = useState<TaxSettings>(DEFAULT_TAX)
-
-  // 시나리오 (Sim²용 독립)
-  const [scenario, setScenario] = useState<ScenarioSettings>(DEFAULT_SCENARIO)
-
-  // 활성 패널
-  const [activePanel, setActivePanel] = useState<'goal' | 'tax'>('goal')
 
   useEffect(() => {
     fetch('/api/fx-rate').then(r => r.json()).then(d => {
@@ -143,19 +140,12 @@ export default function Sim2Page() {
               <div className="card p-5 space-y-5">
                 {/* 목표 월 배당 */}
                 <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="text-sm font-medium text-slate-700">
-                      목표 월 배당금
-                      {tax.enabled && <span className="text-xs text-slate-400 font-normal ml-1">(세후)</span>}
-                    </label>
-                    <span className="text-sm font-bold text-amber-600">{targetDiv.toLocaleString()}만원</span>
-                  </div>
-                  <input type="range" min={50} max={3000} step={50} value={targetDiv}
-                    onChange={e => setTargetDiv(Number(e.target.value))}
-                    className="w-full accent-amber-500" />
-                  <div className="flex justify-between text-xs text-slate-400 mt-0.5">
-                    <span>50만</span><span>1,500만</span><span>3,000만</span>
-                  </div>
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    목표 월 배당금
+                    {tax.enabled && <span className="text-xs text-slate-400 font-normal ml-1">(세후)</span>}
+                  </label>
+                  <NumberSlider label="" value={targetDiv} min={50} max={3000} step={50}
+                    display={`${targetDiv.toLocaleString()}만원`} unit="만원" onChange={setTargetDiv} />
                 </div>
 
                 {/* ETF 선택 */}
@@ -185,29 +175,13 @@ export default function Sim2Page() {
                 </div>
 
                 {/* 투자 기간 */}
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="text-sm text-slate-600">투자 기간</label>
-                    <span className="text-sm font-semibold text-blue-600">{years}년</span>
-                  </div>
-                  <input type="range" min={1} max={30} step={1} value={years}
-                    onChange={e => setYears(Number(e.target.value))}
-                    className="w-full accent-blue-600" />
-                </div>
+                <NumberSlider label="투자 기간" value={years} min={1} max={30} step={1}
+                  display={`${years}년`} unit="년" onChange={setYears} />
 
                 {/* 환율 */}
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="text-sm text-slate-600 flex items-center gap-1">
-                      환율
-                      {fxLoaded && <span className="text-xs text-green-500">● 실시간</span>}
-                    </label>
-                    <span className="text-sm font-semibold text-blue-600">{fxRate.toLocaleString()}원</span>
-                  </div>
-                  <input type="range" min={1000} max={1800} step={10} value={fxRate}
-                    onChange={e => setFxRate(Number(e.target.value))}
-                    className="w-full accent-blue-600" />
-                </div>
+                <NumberSlider label="환율" value={fxRate} min={1000} max={1800} step={10}
+                  display={`${fxRate.toLocaleString()}원`} unit="원" onChange={setFxRate}
+                  highlight={fxLoaded} />
 
                 {/* DRIP */}
                 <div className="flex items-center gap-3">
