@@ -109,6 +109,39 @@ export function simulate(
   return results
 }
 
+// 분산투자 시뮬레이션 — 여러 ETF를 동시에 매수
+export function simulateMulti(
+  allocations: { ticker: string; monthlyKRW: number }[],
+  years: number,
+  fxRate: number,
+  drip: boolean,
+  tax: TaxSettings = DEFAULT_TAX
+): YearResult[] {
+  // 각 ETF별로 시뮬레이션 후 합산
+  const allResults = allocations.map(({ ticker, monthlyKRW }) =>
+    simulate(ETF_DATA[ticker], monthlyKRW, years, fxRate, drip, tax)
+  )
+
+  return Array.from({ length: years }, (_, i) => {
+    const y = i + 1
+    const invested    = allResults.reduce((s, r) => s + (r[i]?.invested ?? 0), 0)
+    const portfolioKRW = allResults.reduce((s, r) => s + (r[i]?.portfolioKRW ?? 0), 0)
+    const annualDivKRW = allResults.reduce((s, r) => s + (r[i]?.annualDivKRW ?? 0), 0)
+    const gainKRW = portfolioKRW - invested
+    const taxResult = calcTax(annualDivKRW, gainKRW, tax)
+    return {
+      year: y,
+      invested,
+      portfolioKRW,
+      gainKRW,
+      gainPct: invested > 0 ? (gainKRW / invested) * 100 : 0,
+      annualDivKRW,
+      monthlyDivKRW: annualDivKRW / 12,
+      tax: taxResult,
+    }
+  })
+}
+
 export function fmtKRW(n: number): string {
   const abs = Math.abs(n)
   const sign = n < 0 ? '-' : ''
