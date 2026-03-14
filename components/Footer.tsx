@@ -1,9 +1,9 @@
 export default function Footer() {
   return (
     <footer className="mt-12 pb-8 px-4 text-center">
-      <div className="max-w-6xl mx-auto border-t border-slate-200 pt-6 space-y-1">
-        <p className="text-sm font-medium text-slate-600">
-          Designed &amp; Built by <span className="text-blue-600 font-semibold">Chang Bi</span>
+      <div className="max-w-6xl mx-auto border-t border-slate-200 pt-6 space-y-1.5">
+        <p className="text-sm font-semibold text-slate-600">
+          Designed &amp; Built by <span className="text-blue-600">Chang Bi</span>
         </p>
         <p className="text-xs text-slate-400">
           Powered by Claude · © 2025

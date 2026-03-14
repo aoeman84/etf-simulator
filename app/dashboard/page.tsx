@@ -211,14 +211,15 @@ export default function DashboardPage() {
             </div>
 
             {/* 테이블 */}
-            <div className="card overflow-hidden table-wrapper">
-              <table className="w-full text-sm">
+            <div className="card overflow-hidden">
+              <div className="overflow-x-auto">
+              <table className="w-full text-sm" style={{minWidth: '480px'}}>
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     {['연도', '투자원금', '포트폴리오', '수익률',
                       tax.enabled ? '세후 월배당' : '월 배당금',
                       tax.enabled ? '세금 부담' : ''].filter(Boolean).map(h => (
-                      <th key={h} className="text-left px-4 py-3 font-medium text-slate-500 text-xs">{h}</th>
+                      <th key={h} className="text-left px-3 py-3 font-medium text-slate-500 text-xs whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -227,22 +228,22 @@ export default function DashboardPage() {
                     <tr key={r.year}
                       className={`hover:bg-slate-50 cursor-pointer ${r.year === selectedYear ? 'bg-blue-50' : ''}`}
                       onClick={() => setSelectedYear(r.year)}>
-                      <td className="px-4 py-3 font-medium">
+                      <td className="px-3 py-3 font-medium whitespace-nowrap">
                         {r.year}년차
                         {r.tax.exceedsThreshold && tax.enabled && (
                           <span className="ml-1 text-xs text-orange-500">⚠️</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-500">{fmtKRW(r.invested)}</td>
-                      <td className="px-4 py-3 font-medium">{fmtKRW(r.portfolioKRW)}</td>
-                      <td className={`px-4 py-3 font-medium ${r.gainPct >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                      <td className="px-3 py-3 text-slate-500 whitespace-nowrap">{fmtKRW(r.invested)}</td>
+                      <td className="px-3 py-3 font-medium whitespace-nowrap">{fmtKRW(r.portfolioKRW)}</td>
+                      <td className={`px-3 py-3 font-medium whitespace-nowrap ${r.gainPct >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                         +{r.gainPct.toFixed(1)}%
                       </td>
-                      <td className="px-4 py-3 text-amber-600 font-medium">
+                      <td className="px-3 py-3 text-amber-600 font-medium whitespace-nowrap">
                         {fmtKRW(tax.enabled ? r.tax.afterTaxMonthlyDivKRW : r.monthlyDivKRW)}
                       </td>
                       {tax.enabled && (
-                        <td className="px-4 py-3 text-red-500 text-xs">
+                        <td className="px-3 py-3 text-red-500 text-xs whitespace-nowrap">
                           -{fmtKRW(r.tax.totalDivTaxKRW)}/년
                         </td>
                       )}
@@ -250,6 +251,7 @@ export default function DashboardPage() {
                   ))}
                 </tbody>
               </table>
+              </div>
               {tax.enabled && (
                 <div className="px-4 py-2 bg-orange-50 border-t border-orange-100 text-xs text-orange-600">
                   ⚠️ 표시된 행은 금융소득 종합과세 대상 (2,000만원 초과) · 행 클릭 시 세금 상세 확인

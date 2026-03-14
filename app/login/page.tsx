@@ -15,9 +15,7 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const result = await signIn('credentials', {
-      email, password, redirect: false,
-    })
+    const result = await signIn('credentials', { email, password, redirect: false })
     setLoading(false)
     if (result?.error) {
       setError('이메일 또는 비밀번호가 올바르지 않습니다.')
@@ -27,7 +25,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 px-4">
       <div className="card w-full max-w-md p-8">
         <div className="text-center mb-8">
           <div className="text-2xl font-bold text-blue-600 mb-1">📈 ETF 시뮬레이터</div>
@@ -59,6 +57,15 @@ export default function LoginPage() {
           계정이 없으신가요?{' '}
           <Link href="/register" className="text-blue-600 hover:underline font-medium">회원가입</Link>
         </p>
+      </div>
+
+      {/* 로그인 페이지 푸터 */}
+      <div className="mt-8 text-center space-y-1">
+        <p className="text-sm font-medium text-slate-500">
+          Designed &amp; Built by <span className="text-blue-600 font-semibold">Chang Bi</span>
+        </p>
+        <p className="text-xs text-slate-400">Powered by Claude · © 2025</p>
+        <p className="text-xs text-slate-400">본 시뮬레이터는 투자 참고용이며 실제 투자 조언이 아닙니다.</p>
       </div>
     </div>
   )

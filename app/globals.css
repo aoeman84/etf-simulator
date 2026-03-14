@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');
-
 @layer base {
   :root {
     --bg: #f8fafc;
@@ -18,10 +16,9 @@
   }
   body {
     @apply bg-slate-50 text-slate-900 antialiased;
-    font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont,
-      'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+    font-family: -apple-system, 'Apple SD Gothic Neo', BlinkMacSystemFont,
+      'Noto Sans KR', 'Malgun Gothic', sans-serif;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
     word-break: keep-all;
     overflow-wrap: break-word;
   }
@@ -44,27 +41,19 @@
   }
   .input {
     @apply border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full;
-    font-size: 16px; /* iOS 자동 확대 방지 */
+    font-size: 16px;
   }
-  /* 모바일 슬라이더 터치 영역 확대 */
   input[type="range"] {
     @apply w-full accent-blue-600;
     height: 32px;
     touch-action: manipulation;
   }
-  /* 모바일 select 자동 확대 방지 */
   select {
     font-size: 16px;
   }
 }
 
-/* 모바일 테이블 가로 스크롤 */
 @media (max-width: 640px) {
-  table {
-    font-size: 12px;
-  }
-  .mobile-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
+  table { font-size: 12px; }
+  .overflow-x-auto { -webkit-overflow-scrolling: touch; }
 }
