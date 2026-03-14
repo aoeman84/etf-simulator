@@ -26,7 +26,7 @@ export default function ComparePage() {
     fetch('/api/fx-rate').then(r => r.json()).then(d => {
       if (d.rate) setFxRate(d.rate)
     }).catch(() => {})
-  }, []))
+  }, [])
 
   useEffect(() => {
     const res: Record<string, YearResult[]> = {}
