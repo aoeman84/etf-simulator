@@ -115,12 +115,22 @@ export function simulateMulti(
   years: number,
   fxRate: number,
   drip: boolean,
-  tax: TaxSettings = DEFAULT_TAX
+  tax: TaxSettings = DEFAULT_TAX,
+  scenario?: { priceCAGRAdj: number; divGrowthAdj: number; mode: string }
 ): YearResult[] {
-  // 각 ETF별로 시뮬레이션 후 합산
-  const allResults = allocations.map(({ ticker, monthlyKRW }) =>
-    simulate(ETF_DATA[ticker], monthlyKRW, years, fxRate, drip, tax)
-  )
+  const allResults = allocations.map(({ ticker, monthlyKRW }) => {
+    const etf = { ...ETF_DATA[ticker] }
+    if (scenario) {
+      if (scenario.mode === 'pessimistic') {
+        etf.priceCAGR = etf.priceCAGR * 0.5
+        etf.divGrowthCAGR = 0
+      } else {
+        etf.priceCAGR = Math.max(0, etf.priceCAGR + scenario.priceCAGRAdj)
+        etf.divGrowthCAGR = Math.max(0, etf.divGrowthCAGR + scenario.divGrowthAdj)
+      }
+    }
+    return simulate(etf, monthlyKRW, years, fxRate, drip, tax)
+  })
 
   return Array.from({ length: years }, (_, i) => {
     const y = i + 1

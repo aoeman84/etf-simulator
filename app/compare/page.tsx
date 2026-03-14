@@ -21,6 +21,13 @@ export default function ComparePage() {
   const [drip, setDrip] = useState(true)
   const [compareResults, setCompareResults] = useState<Record<string, YearResult[]>>({})
 
+  // 실시간 환율
+  useEffect(() => {
+    fetch('/api/fx-rate').then(r => r.json()).then(d => {
+      if (d.rate) setFxRate(d.rate)
+    }).catch(() => {})
+  }, []))
+
   useEffect(() => {
     const res: Record<string, YearResult[]> = {}
     selected.forEach(t => {
