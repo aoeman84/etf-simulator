@@ -12,9 +12,14 @@ interface Props {
   onChange: (allocations: ETFAllocation[]) => void
 }
 
-// 실시간 가격 훅
+interface PriceInfo {
+  price: number
+  change: number      // 등락액
+  changePct: number   // 등락률 %
+}
+
 function useLivePrices(tickers: string[]) {
-  const [prices, setPrices] = useState<Record<string, number>>({})
+  const [prices, setPrices] = useState<Record<string, PriceInfo>>({})
   const [loading, setLoading] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
@@ -23,7 +28,12 @@ function useLivePrices(tickers: string[]) {
       fetch(`/api/etf-price?ticker=${ticker}`)
         .then(r => r.json())
         .then(d => {
-          if (d.price) setPrices(prev => ({ ...prev, [ticker]: d.price }))
+          if (d.price) {
+            const base = ETF_DATA[ticker]?.price ?? d.price
+            const change = d.price - base
+            const changePct = (change / base) * 100
+            setPrices(prev => ({ ...prev, [ticker]: { price: d.price, change, changePct } }))
+          }
         })
         .finally(() => setLoading(prev => ({ ...prev, [ticker]: false })))
     })
@@ -32,27 +42,19 @@ function useLivePrices(tickers: string[]) {
   return { prices, loading }
 }
 
-// 입력칸별로 문자열 상태를 따로 관리하는 서브 컴포넌트
 function MonthlyInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [inputVal, setInputVal] = useState(String(value))
 
-  // 외부 value 변경(슬라이더) 반영
-  useEffect(() => {
-    setInputVal(String(value))
-  }, [value])
+  useEffect(() => { setInputVal(String(value)) }, [value])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value
-    setInputVal(raw) // 빈칸도 허용
-
+    setInputVal(raw)
     const num = parseInt(raw, 10)
-    if (!isNaN(num) && num >= 10 && num <= 2000) {
-      onChange(num)
-    }
+    if (!isNaN(num) && num >= 10 && num <= 2000) onChange(num)
   }
 
   function handleBlur() {
-    // 포커스 잃으면 유효 범위로 고정
     const num = parseInt(inputVal, 10)
     const clamped = isNaN(num) ? 10 : Math.min(2000, Math.max(10, num))
     setInputVal(String(clamped))
@@ -61,8 +63,7 @@ function MonthlyInput({ value, onChange }: { value: number; onChange: (v: number
 
   return (
     <input
-      type="number"
-      min={10} max={2000} step={10}
+      type="number" min={10} max={2000} step={10}
       value={inputVal}
       onChange={handleChange}
       onBlur={handleBlur}
@@ -73,9 +74,9 @@ function MonthlyInput({ value, onChange }: { value: number; onChange: (v: number
 }
 
 export default function MultiETF({ allocations, onChange }: Props) {
-  const tickers = Object.keys(ETF_DATA)
   const activeTickers = allocations.map(a => a.ticker)
   const { prices, loading } = useLivePrices(activeTickers)
+
   function toggleETF(ticker: string) {
     const exists = allocations.find(a => a.ticker === ticker)
     if (exists) {
@@ -117,31 +118,43 @@ export default function MultiETF({ allocations, onChange }: Props) {
         {allocations.map(a => {
           const etf = ETF_DATA[a.ticker]
           const pct = total > 0 ? Math.round((a.monthly / total) * 100) : 0
+          const info = prices[a.ticker]
+          const isUp = info ? info.changePct >= 0 : null
+
           return (
             <div key={a.ticker} className="bg-slate-50 rounded-xl p-3">
-              <div className="flex items-center gap-2 mb-2">
+              {/* 종목명 + 비중 */}
+              <div className="flex items-center gap-2 mb-1.5">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: etf.color }} />
                 <span className="text-sm font-semibold">{a.ticker}</span>
                 <span className="text-xs text-slate-400 flex-1 truncate">{etf.name}</span>
                 <span className="text-xs font-medium text-blue-600 flex-shrink-0">{pct}%</span>
               </div>
-              {/* 실시간 가격 */}
-              <div className="mb-2 flex items-center gap-1.5">
+
+              {/* 현재기준가 + 등락폭 */}
+              <div className="flex items-center gap-2 mb-2">
                 {loading[a.ticker] ? (
                   <span className="text-xs text-slate-400">조회 중...</span>
-                ) : prices[a.ticker] && prices[a.ticker] !== etf.price ? (
+                ) : info ? (
                   <>
-                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
-                      실시간 ${prices[a.ticker].toFixed(2)}
+                    <span className="text-xs text-slate-500">현재기준가</span>
+                    <span className="text-xs font-semibold text-slate-700">${info.price.toFixed(2)}</span>
+                    <span className={`text-xs font-semibold ${isUp ? 'text-blue-500' : 'text-red-500'}`}>
+                      {isUp ? '▲' : '▼'} {Math.abs(info.changePct).toFixed(2)}%
+                    </span>
+                    <span className={`text-xs ${isUp ? 'text-blue-400' : 'text-red-400'}`}>
+                      ({isUp ? '+' : ''}{info.change.toFixed(2)})
                     </span>
                   </>
                 ) : (
-                  <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                    기준가 ${etf.price.toFixed(2)}
-                  </span>
+                  <>
+                    <span className="text-xs text-slate-500">현재기준가</span>
+                    <span className="text-xs font-semibold text-slate-700">${etf.price.toFixed(2)}</span>
+                  </>
                 )}
               </div>
+
+              {/* 슬라이더 + 입력 */}
               <div className="flex items-center gap-2">
                 <input
                   type="range" min={10} max={2000} step={10} value={a.monthly}
@@ -150,10 +163,7 @@ export default function MultiETF({ allocations, onChange }: Props) {
                   style={{ height: '28px' }}
                 />
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <MonthlyInput
-                    value={a.monthly}
-                    onChange={v => updateMonthly(a.ticker, v)}
-                  />
+                  <MonthlyInput value={a.monthly} onChange={v => updateMonthly(a.ticker, v)} />
                   <span className="text-xs text-slate-500">만</span>
                 </div>
               </div>

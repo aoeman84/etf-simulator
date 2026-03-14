@@ -32,6 +32,17 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [selectedYear, setSelectedYear] = useState<number>(10)
+  const [fxLoaded, setFxLoaded] = useState(false)
+
+  // 실시간 환율 가져오기
+  useEffect(() => {
+    fetch('/api/fx-rate')
+      .then(r => r.json())
+      .then(d => {
+        if (d.rate) { setFxRate(d.rate); setFxLoaded(true) }
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const res = simulateMulti(
@@ -69,7 +80,8 @@ export default function DashboardPage() {
       <Navbar />
       <InstallPrompt />
       <main className="max-w-6xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-5">
+        {/* 제목 + 저장 버튼 */}
+        <div className="flex items-center justify-between mb-3">
           <div>
             <h1 className="text-xl font-bold flex items-center gap-1">
               ETF 적립식 시뮬레이터
@@ -115,12 +127,13 @@ export default function DashboardPage() {
                   />
                   {/* 환율 */}
                   <NumberSlider
-                    label="환율 (원/달러)"
+                    label={fxLoaded ? "환율 (실시간 반영)" : "환율 (원/달러)"}
                     value={fxRate}
                     min={1000} max={1800} step={10}
                     display={`${fxRate.toLocaleString()}원`}
                     unit="원"
                     onChange={setFxRate}
+                    highlight={fxLoaded}
                   />
                 </div>
 
@@ -278,9 +291,9 @@ function TabBtn({ active, onClick, children }: {
   )
 }
 
-function NumberSlider({ label, value, min, max, step, display, unit, onChange }: {
+function NumberSlider({ label, value, min, max, step, display, unit, onChange, highlight }: {
   label: string; value: number; min: number; max: number; step: number
-  display: string; unit: string; onChange: (v: number) => void
+  display: string; unit: string; onChange: (v: number) => void; highlight?: boolean
 }) {
   const [inputVal, setInputVal] = useState(String(value))
 
@@ -303,7 +316,10 @@ function NumberSlider({ label, value, min, max, step, display, unit, onChange }:
   return (
     <div>
       <div className="flex justify-between mb-1">
-        <label className="text-sm font-medium text-slate-700">{label}</label>
+        <label className="text-sm font-medium text-slate-700 flex items-center gap-1">
+          {label}
+          {highlight && <span className="text-xs text-green-500 font-normal">● 실시간</span>}
+        </label>
         <span className="text-sm font-semibold text-blue-600">{display}</span>
       </div>
       <div className="flex items-center gap-2">
