@@ -23,7 +23,6 @@ interface Purchase {
 
 type SubTab = 'saved' | 'records'
 
-// 디스켓 SVG — My PF 저장목록 아이콘과 동일
 function FloppyIcon({ size = 14 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor">
@@ -38,15 +37,21 @@ export default function PortfolioPage() {
   if (status === 'unauthenticated') redirect('/login')
 
   const [subTab, setSubTab] = useState<SubTab>('saved')
-
-  // 저장된 포트폴리오
   const [portfolios, setPortfolios] = useState<SavedPortfolio[]>([])
   const [loadingPF, setLoadingPF] = useState(true)
-
-  // 실제 매수 기록
   const [purchases, setPurchases] = useState<Purchase[]>([])
-  const [form, setForm] = useState({ date: '', ticker: 'SCHD', amount: '', fxRate: '1350' })
+
+  // 날짜를 YYYY-MM-DD 텍스트로 직접 입력 (date picker 침범 방지)
+  const [form, setForm] = useState({
+    year: '',
+    month: '',
+    day: '',
+    ticker: 'SCHD',
+    amount: '',
+    fxRate: '',
+  })
   const [fxLoading, setFxLoading] = useState(false)
+  const [fxAutoLoaded, setFxAutoLoaded] = useState(false)
   const [currentFxRate, setCurrentFxRate] = useState(1350)
   const [toast, setToast] = useState('')
 
@@ -64,27 +69,63 @@ export default function PortfolioPage() {
     } catch {}
   }, [])
 
-  // 현재 환율
   useEffect(() => {
     fetch('/api/fx-rate').then(r => r.json()).then(d => {
       if (d.rate) setCurrentFxRate(d.rate)
     }).catch(() => {})
   }, [])
 
-  // 날짜 변경 시 해당 날짜 환율 자동 조회
-  async function handleDateChange(date: string) {
-    setForm(f => ({ ...f, date }))
-    if (!date) return
+  // 날짜 완성 시 환율 자동 조회
+  async function fetchFxForDate(year: string, month: string, day: string) {
+    if (year.length !== 4 || month.length < 1 || day.length < 1) return
+    const m = month.padStart(2, '0')
+    const d2 = day.padStart(2, '0')
+    const dateStr = `${year}-${m}-${d2}`
+
+    // 미래 날짜 체크
+    if (new Date(dateStr) > new Date()) return
 
     setFxLoading(true)
+    setFxAutoLoaded(false)
     try {
-      const res = await fetch(`/api/fx-rate-history?date=${date}`)
+      const res = await fetch(`/api/fx-rate-history?date=${dateStr}`)
       const data = await res.json()
       if (data.rate) {
-        setForm(f => ({ ...f, date, fxRate: String(data.rate) }))
+        setForm(f => ({ ...f, fxRate: String(data.rate) }))
+        setFxAutoLoaded(true)
       }
     } catch {}
     setFxLoading(false)
+  }
+
+  function handleYearChange(v: string) {
+    const val = v.replace(/\D/g, '').slice(0, 4)
+    setForm(f => ({ ...f, year: val }))
+    setFxAutoLoaded(false)
+    if (val.length === 4 && form.month && form.day) fetchFxForDate(val, form.month, form.day)
+  }
+
+  function handleMonthChange(v: string) {
+    const val = v.replace(/\D/g, '').slice(0, 2)
+    const num = parseInt(val)
+    if (val && (num < 1 || num > 12)) return
+    setForm(f => ({ ...f, month: val }))
+    setFxAutoLoaded(false)
+    if (form.year.length === 4 && val && form.day) fetchFxForDate(form.year, val, form.day)
+  }
+
+  function handleDayChange(v: string) {
+    const val = v.replace(/\D/g, '').slice(0, 2)
+    const num = parseInt(val)
+    if (val && (num < 1 || num > 31)) return
+    setForm(f => ({ ...f, day: val }))
+    setFxAutoLoaded(false)
+    if (form.year.length === 4 && form.month && val) fetchFxForDate(form.year, form.month, val)
+  }
+
+  function getDateString() {
+    if (!form.year || !form.month || !form.day) return ''
+    return `${form.year}-${form.month.padStart(2, '0')}-${form.day.padStart(2, '0')}`
   }
 
   function savePurchases(list: Purchase[]) {
@@ -92,23 +133,25 @@ export default function PortfolioPage() {
     try { localStorage.setItem('etf_actual_records', JSON.stringify(list)) } catch {}
   }
 
-  function showToast(msg: string) {
+  function showToastMsg(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(''), 2500)
   }
 
   function addPurchase() {
-    if (!form.date || !form.amount) return
+    const dateStr = getDateString()
+    if (!dateStr || !form.amount) return
     const next = [...purchases, {
       id: Date.now().toString(),
-      date: form.date,
+      date: dateStr,
       ticker: form.ticker,
       amountKRW: Number(form.amount),
-      fxRate: Number(form.fxRate),
+      fxRate: Number(form.fxRate) || currentFxRate,
     }]
     savePurchases(next)
-    setForm(f => ({ ...f, date: '', amount: '' }))
-    showToast('매수 기록이 추가됐어요')
+    setForm(f => ({ ...f, year: '', month: '', day: '', amount: '', fxRate: '' }))
+    setFxAutoLoaded(false)
+    showToastMsg('매수 기록이 추가됐어요')
   }
 
   function removePurchase(id: string) {
@@ -142,20 +185,21 @@ export default function PortfolioPage() {
     return acc
   }, {})
 
+  const isFormValid = form.year.length === 4 && form.month && form.day && form.amount
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
 
-      {/* 토스트 */}
       {toast && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 whitespace-nowrap bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
           ✅ {toast}
         </div>
       )}
 
       <main className="max-w-4xl mx-auto px-4 py-4">
 
-        {/* ── 서브 탭 — 완전 고정 너비 분할 ── */}
+        {/* 서브 탭 — grid로 침범 완전 방지 */}
         <div className="grid grid-cols-2 gap-1 bg-white rounded-xl border border-slate-200 p-1 mb-5">
           <button
             onClick={() => setSubTab('saved')}
@@ -175,7 +219,7 @@ export default function PortfolioPage() {
             <span>📒</span>
             <span>매수 기록</span>
             {purchases.length > 0 && (
-              <span className="bg-blue-100 text-blue-600 text-xs w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="bg-blue-100 text-blue-600 text-xs w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 leading-none">
                 {purchases.length}
               </span>
             )}
@@ -226,9 +270,7 @@ export default function PortfolioPage() {
                         )}
                       </div>
                       <button onClick={() => deletePortfolio(pf.id)}
-                        className="text-slate-300 hover:text-red-400 transition-colors text-xl leading-none flex-shrink-0 mt-0.5">
-                        ✕
-                      </button>
+                        className="text-slate-300 hover:text-red-400 transition-colors text-xl leading-none flex-shrink-0 mt-0.5">✕</button>
                     </div>
                   </div>
                 ))}
@@ -240,16 +282,44 @@ export default function PortfolioPage() {
         {/* ─── 실제 매수 기록 ─── */}
         {subTab === 'records' && (
           <div className="space-y-4">
-            {/* 입력 폼 */}
             <div className="card p-5">
               <h3 className="text-sm font-semibold text-slate-700 mb-4">매수 내역 추가</h3>
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                  <label className="text-xs text-slate-500 mb-1 block">날짜</label>
-                  <input type="date" value={form.date}
-                    onChange={e => handleDateChange(e.target.value)}
-                    className="input text-sm" />
+
+              {/* 날짜 — 연/월/일 분리 입력 (date picker 침범 없음) */}
+              <div className="mb-3">
+                <label className="text-xs text-slate-500 mb-1.5 block">날짜</label>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <input
+                      type="text" inputMode="numeric" placeholder="2024"
+                      value={form.year} onChange={e => handleYearChange(e.target.value)}
+                      maxLength={4}
+                      className="input text-sm text-center w-full"
+                    />
+                    <div className="text-xs text-center text-slate-400 mt-0.5">년</div>
+                  </div>
+                  <div className="w-16">
+                    <input
+                      type="text" inputMode="numeric" placeholder="12"
+                      value={form.month} onChange={e => handleMonthChange(e.target.value)}
+                      maxLength={2}
+                      className="input text-sm text-center w-full"
+                    />
+                    <div className="text-xs text-center text-slate-400 mt-0.5">월</div>
+                  </div>
+                  <div className="w-16">
+                    <input
+                      type="text" inputMode="numeric" placeholder="15"
+                      value={form.day} onChange={e => handleDayChange(e.target.value)}
+                      maxLength={2}
+                      className="input text-sm text-center w-full"
+                    />
+                    <div className="text-xs text-center text-slate-400 mt-0.5">일</div>
+                  </div>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-3">
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">ETF</label>
                   <select className="input text-sm" value={form.ticker}
@@ -258,26 +328,26 @@ export default function PortfolioPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-slate-500 mb-1 block">투자금액 (만원)</label>
-                  <input type="number" placeholder="500" value={form.amount}
-                    onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-                    className="input text-sm" inputMode="numeric" />
-                </div>
-                <div>
                   <label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
                     당시 환율
-                    {fxLoading && <span className="text-blue-400 text-xs">조회 중...</span>}
-                    {!fxLoading && form.date && form.fxRate !== '1350' && (
-                      <span className="text-green-500 text-xs">● 자동</span>
-                    )}
+                    {fxLoading && <span className="text-blue-400">● 조회중</span>}
+                    {!fxLoading && fxAutoLoaded && <span className="text-green-500">● 자동입력</span>}
                   </label>
-                  <input type="number" value={form.fxRate}
+                  <input type="number" placeholder="1350" value={form.fxRate}
                     onChange={e => setForm(f => ({ ...f, fxRate: e.target.value }))}
                     className="input text-sm" inputMode="numeric" />
                 </div>
               </div>
+
+              <div className="mb-3">
+                <label className="text-xs text-slate-500 mb-1 block">투자금액 (만원)</label>
+                <input type="number" placeholder="500" value={form.amount}
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                  className="input text-sm w-full" inputMode="numeric" />
+              </div>
+
               <button onClick={addPurchase}
-                disabled={!form.date || !form.amount}
+                disabled={!isFormValid}
                 className="btn-primary w-full text-sm disabled:opacity-40">
                 + 추가
               </button>
@@ -285,7 +355,6 @@ export default function PortfolioPage() {
 
             {purchases.length > 0 && (
               <>
-                {/* 전체 요약 */}
                 <div className="card p-4">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="text-sm font-semibold text-slate-700">전체 요약</h3>
@@ -335,7 +404,6 @@ export default function PortfolioPage() {
                   )}
                 </div>
 
-                {/* 매수 내역 리스트 */}
                 <div className="card overflow-hidden">
                   <div className="px-4 py-3 border-b border-slate-100">
                     <h3 className="text-sm font-medium text-slate-700">매수 내역</h3>
@@ -348,7 +416,7 @@ export default function PortfolioPage() {
                           <div className="w-2 h-2 rounded-full flex-shrink-0"
                             style={{ background: ETF_DATA[p.ticker]?.color ?? '#94a3b8' }} />
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 text-sm">
+                            <div className="flex items-center gap-2 text-sm flex-wrap">
                               <span className="font-semibold">{p.ticker}</span>
                               <span className="text-slate-400 text-xs">{p.date}</span>
                               <span className="text-slate-600">{p.amountKRW.toLocaleString()}만원</span>
@@ -362,9 +430,7 @@ export default function PortfolioPage() {
                             </div>
                           </div>
                           <button onClick={() => removePurchase(p.id)}
-                            className="text-slate-300 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0">
-                            ✕
-                          </button>
+                            className="text-slate-300 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0">✕</button>
                         </div>
                       )
                     })}
@@ -380,7 +446,7 @@ export default function PortfolioPage() {
               <div className="card p-10 text-center">
                 <div className="text-3xl mb-3">📒</div>
                 <div className="text-slate-500 text-sm mb-1">매수 내역을 추가해보세요</div>
-                <div className="text-slate-400 text-xs">날짜를 선택하면 당시 환율을 자동으로 불러와요</div>
+                <div className="text-slate-400 text-xs">연·월·일 입력 시 당시 환율을 자동으로 불러와요</div>
               </div>
             )}
           </div>

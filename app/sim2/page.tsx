@@ -131,7 +131,7 @@ export default function Sim2Page() {
                 🎯 목표 설정
               </PanelBtn>
               <PanelBtn active={activePanel === 'tax'} onClick={() => setActivePanel('tax')}>
-                🧾 세금
+                🧾 세금 설정
                 {tax.enabled && <span className="ml-1 w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />}
               </PanelBtn>
             </div>
