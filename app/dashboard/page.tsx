@@ -77,14 +77,14 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar rightSlot={
-        <div className="flex items-center gap-2">
-          <InfoModal />
+      <Navbar
+        titleSlot={<InfoModal />}
+        rightSlot={
           <button onClick={savePortfolio} disabled={saving} className="btn-primary text-sm flex items-center gap-1.5">
             {saved ? '✓ 저장됨' : saving ? '저장 중...' : '💾 저장'}
           </button>
-        </div>
-      } />
+        }
+      />
       <InstallPrompt />
       <main className="max-w-6xl mx-auto px-4 py-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

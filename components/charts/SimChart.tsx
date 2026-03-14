@@ -1,6 +1,6 @@
 'use client'
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, ReferenceLine,
+  BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 import { YearResult } from '@/types'
 
@@ -14,8 +14,7 @@ export default function SimChart({ results, taxEnabled }: { results: YearResult[
     year: `${r.year}년`,
     투자원금: Math.round(r.invested / 1e4),
     평가이익: Math.round(r.gainKRW / 1e4),
-    세후배당: Math.round((taxEnabled ? r.tax.afterTaxDivKRW : r.annualDivKRW) / 1e4),
-    _exceed: r.tax?.exceedsThreshold && taxEnabled,
+    배당금: Math.round((taxEnabled ? r.tax.afterTaxDivKRW : r.annualDivKRW) / 1e4),
   }))
 
   return (
@@ -30,8 +29,8 @@ export default function SimChart({ results, taxEnabled }: { results: YearResult[
         />
         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
         <Bar dataKey="투자원금" stackId="a" fill="#3b82f6" />
-        <Bar dataKey="평가이익" stackId="a" fill="#22c55e" radius={[4, 4, 0, 0]} />
-        <Bar dataKey={taxEnabled ? '세후배당' : '세후배당'} fill="#f59e0b" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="평가이익" stackId="a" fill="#22c55e" />
+        <Bar dataKey="배당금"   stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   )

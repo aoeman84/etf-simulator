@@ -16,36 +16,32 @@ const LINKS = [
 ]
 
 interface Props {
-  rightSlot?: React.ReactNode // 저장 버튼 등 우측 슬롯
+  rightSlot?: React.ReactNode  // 저장 버튼
+  titleSlot?: React.ReactNode  // 제목 옆 아이콘 (ⓘ 등)
 }
 
-export default function Navbar({ rightSlot }: Props) {
+export default function Navbar({ rightSlot, titleSlot }: Props) {
   const pathname = usePathname()
   const page = PAGE_INFO[pathname] ?? PAGE_INFO['/dashboard']
 
   return (
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-4">
-        {/* 상단 로고 + 로그아웃 */}
-        <div className="flex items-center justify-between h-11 border-b border-slate-100">
-          <Link href="/dashboard" className="font-bold text-blue-600 flex items-center gap-1.5">
-            📈 <span>ETF Sim</span>
-          </Link>
-          <button onClick={() => signOut({ callbackUrl: '/login' })}
-            className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1 rounded-lg hover:bg-slate-100 transition-colors">
-            로그아웃
-          </button>
-        </div>
+      <div className="max-w-6xl mx-auto px-4 py-2.5">
 
-        {/* 탭 + 제목 + 우측 슬롯 */}
-        <div className="py-2.5">
-        {/* 제목 + 우측 슬롯 */}
-        <div className="flex items-center justify-between mt-0 mb-2">
-          <div>
-            <h1 className="text-lg font-bold text-slate-800 leading-tight">{page.title}</h1>
-            <p className="text-xs text-slate-400 mt-0.5">{page.desc}</p>
+        {/* 제목 + 우측(저장+로그아웃) */}
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h1 className="text-lg font-bold text-slate-800 leading-tight truncate">{page.title}</h1>
+            {titleSlot}
           </div>
-          {rightSlot && <div className="flex-shrink-0 ml-3">{rightSlot}</div>}
+          <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+            {rightSlot}
+            <button
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="text-sm font-medium text-slate-500 hover:text-slate-700 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors whitespace-nowrap">
+              로그아웃
+            </button>
+          </div>
         </div>
 
         {/* 페이지 탭 */}
@@ -62,7 +58,7 @@ export default function Navbar({ rightSlot }: Props) {
             </Link>
           ))}
         </div>
-        </div>
+
       </div>
     </nav>
   )
