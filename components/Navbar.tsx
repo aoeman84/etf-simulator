@@ -15,10 +15,12 @@ export default function Navbar() {
 
   return (
     <>
+      {/* 상단 헤더 */}
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="font-bold text-blue-600 text-lg">📈 ETF Sim</Link>
+        <div className="max-w-6xl mx-auto px-4 h-12 flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <Link href="/dashboard" className="font-bold text-blue-600 mr-3">📈 ETF Sim</Link>
+            {/* 데스크탑 메뉴 */}
             <div className="hidden md:flex gap-1">
               {links.map(l => (
                 <Link key={l.href} href={l.href}
@@ -31,38 +33,35 @@ export default function Navbar() {
                 </Link>
               ))}
             </div>
+            {/* 모바일 탭 — 상단에 인라인 */}
+            <div className="flex md:hidden gap-0.5">
+              {links.map(l => (
+                <Link key={l.href} href={l.href}
+                  className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg font-medium transition-colors ${
+                    pathname === l.href
+                      ? 'bg-blue-600 text-white'
+                      : 'text-slate-500 hover:bg-slate-100'
+                  }`}>
+                  <span>{l.icon}</span>
+                  <span>{l.label}</span>
+                </Link>
+              ))}
+            </div>
           </div>
-          <div className="flex items-center gap-3">
+
+          <div className="flex items-center gap-2">
             {session?.user && (
-              <span className="text-sm text-slate-500 hidden md:block">
+              <span className="text-xs text-slate-400 hidden md:block truncate max-w-32">
                 {session.user.name ?? session.user.email}
               </span>
             )}
             <button onClick={() => signOut({ callbackUrl: '/login' })}
-              className="text-sm btn-ghost py-1.5">
+              className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
               로그아웃
             </button>
           </div>
         </div>
       </nav>
-
-      {/* 모바일 하단 탭바 */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200" style={{paddingBottom: 'env(safe-area-inset-bottom)'}}>
-        <div className="grid grid-cols-3 h-16">
-          {links.map(l => (
-            <Link key={l.href} href={l.href}
-              className={`flex flex-col items-center justify-center gap-0.5 transition-colors ${
-                pathname === l.href ? 'text-blue-600' : 'text-slate-400'
-              }`}>
-              <span className="text-2xl leading-none">{l.icon}</span>
-              <span className="text-xs font-medium">{l.label}</span>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* 모바일 하단 탭바 여백 */}
-      <div className="md:hidden" style={{height: 'calc(4rem + env(safe-area-inset-bottom))'}} />
     </>
   )
 }
