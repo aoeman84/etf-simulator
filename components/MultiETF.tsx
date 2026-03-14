@@ -12,6 +12,26 @@ interface Props {
   onChange: (allocations: ETFAllocation[]) => void
 }
 
+// 실시간 가격 훅
+function useLivePrices(tickers: string[]) {
+  const [prices, setPrices] = useState<Record<string, number>>({})
+  const [loading, setLoading] = useState<Record<string, boolean>>({})
+
+  useEffect(() => {
+    tickers.forEach(ticker => {
+      setLoading(prev => ({ ...prev, [ticker]: true }))
+      fetch(`/api/etf-price?ticker=${ticker}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.price) setPrices(prev => ({ ...prev, [ticker]: d.price }))
+        })
+        .finally(() => setLoading(prev => ({ ...prev, [ticker]: false })))
+    })
+  }, [tickers.join(',')])
+
+  return { prices, loading }
+}
+
 // 입력칸별로 문자열 상태를 따로 관리하는 서브 컴포넌트
 function MonthlyInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [inputVal, setInputVal] = useState(String(value))
@@ -53,6 +73,9 @@ function MonthlyInput({ value, onChange }: { value: number; onChange: (v: number
 }
 
 export default function MultiETF({ allocations, onChange }: Props) {
+  const tickers = Object.keys(ETF_DATA)
+  const activeTickers = allocations.map(a => a.ticker)
+  const { prices, loading } = useLivePrices(activeTickers)
   function toggleETF(ticker: string) {
     const exists = allocations.find(a => a.ticker === ticker)
     if (exists) {
@@ -101,6 +124,23 @@ export default function MultiETF({ allocations, onChange }: Props) {
                 <span className="text-sm font-semibold">{a.ticker}</span>
                 <span className="text-xs text-slate-400 flex-1 truncate">{etf.name}</span>
                 <span className="text-xs font-medium text-blue-600 flex-shrink-0">{pct}%</span>
+              </div>
+              {/* 실시간 가격 */}
+              <div className="mb-2 flex items-center gap-1.5">
+                {loading[a.ticker] ? (
+                  <span className="text-xs text-slate-400">조회 중...</span>
+                ) : prices[a.ticker] && prices[a.ticker] !== etf.price ? (
+                  <>
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
+                      실시간 ${prices[a.ticker].toFixed(2)}
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                    기준가 ${etf.price.toFixed(2)}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <input
