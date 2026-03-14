@@ -6,13 +6,12 @@ export default function Footer() {
           Designed &amp; Built by <span className="text-blue-600">Chang Bi</span>
         </p>
         <p className="text-xs text-slate-400">
-          Powered by Claude · © 2025
+          Powered by Claude · © 2026
         </p>
         <p className="text-xs text-slate-400">
           본 시뮬레이터는 투자 참고용이며 실제 투자 조언이 아닙니다.
         </p>
-        {/* 버전 — 눈에 안 띄게 */}
-        <p className="text-xs text-slate-300 select-none">v1.12</p>
+        <p className="text-xs text-slate-300 select-none">v1.13</p>
       </div>
     </footer>
   )
