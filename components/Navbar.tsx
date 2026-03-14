@@ -15,11 +15,11 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-50">
-      {/* 데스크탑 */}
-      <div className="hidden md:flex max-w-6xl mx-auto px-4 h-14 items-center justify-between">
-        <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="font-bold text-blue-600 text-lg">📈 ETF Sim</Link>
-          <div className="flex gap-1">
+      <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard" className="font-bold text-blue-600 text-lg flex-shrink-0">📈 ETF Sim</Link>
+          {/* 데스크탑만 — 모바일은 페이지 내 탭으로 */}
+          <div className="hidden md:flex gap-1">
             {links.map(l => (
               <Link key={l.href} href={l.href}
                 className={`text-sm px-3 py-1.5 rounded-lg transition-colors ${
@@ -32,9 +32,9 @@ export default function Navbar() {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {session?.user && (
-            <span className="text-sm text-slate-400 truncate max-w-40">
+            <span className="text-sm text-slate-400 hidden md:block truncate max-w-40">
               {session.user.name ?? session.user.email}
             </span>
           )}
@@ -43,27 +43,6 @@ export default function Navbar() {
             로그아웃
           </button>
         </div>
-      </div>
-
-      {/* 모바일 — 탭 + 로그아웃만 */}
-      <div className="flex md:hidden items-center justify-between px-2 h-12">
-        <div className="flex gap-0.5 flex-1">
-          {links.map(l => (
-            <Link key={l.href} href={l.href}
-              className={`flex-1 flex flex-col items-center justify-center py-1 rounded-lg text-xs font-medium transition-colors ${
-                pathname === l.href
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-500 hover:bg-slate-100'
-              }`}>
-              <span className="text-base leading-none mb-0.5">{l.icon}</span>
-              <span style={{fontSize: '10px'}}>{l.label}</span>
-            </Link>
-          ))}
-        </div>
-        <button onClick={() => signOut({ callbackUrl: '/login' })}
-          className="ml-2 text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded-lg hover:bg-slate-100 whitespace-nowrap transition-colors flex-shrink-0">
-          로그아웃
-        </button>
       </div>
     </nav>
   )

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const CACHE: Record<string, { price: number; ts: number }> = {}
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+const CACHE: Record<string, { price: number; change: number; changePct: number; ts: number }> = {}
+const CACHE_TTL = 5 * 60 * 1000
 
 export async function GET(req: NextRequest) {
   const ticker = req.nextUrl.searchParams.get('ticker')?.toUpperCase()
   if (!ticker) return NextResponse.json({ error: 'ticker required' }, { status: 400 })
 
-  // Return cached if fresh
   if (CACHE[ticker] && Date.now() - CACHE[ticker].ts < CACHE_TTL) {
-    return NextResponse.json({ ticker, price: CACHE[ticker].price, cached: true })
+    return NextResponse.json({ ticker, ...CACHE[ticker], cached: true })
   }
 
   try {
@@ -24,20 +23,24 @@ export async function GET(req: NextRequest) {
       }
     )
     const data = await res.json()
-    const price = data?.body?.regularMarketPrice
+    const body = data?.body
+    const price = body?.regularMarketPrice
+    const change = body?.regularMarketChange ?? 0
+    const changePct = body?.regularMarketChangePercent ?? 0
 
     if (!price) throw new Error('Price not found')
 
-    CACHE[ticker] = { price, ts: Date.now() }
-    return NextResponse.json({ ticker, price, cached: false })
+    CACHE[ticker] = { price, change, changePct, ts: Date.now() }
+    return NextResponse.json({ ticker, price, change, changePct, cached: false })
   } catch {
-    // Fallback to static data if API fails
     const fallback: Record<string, number> = {
       SCHD: 30.82, VOO: 513.0, QQQ: 468.0, VYM: 125.0, JEPI: 57.0,
     }
     return NextResponse.json({
       ticker,
       price: fallback[ticker] ?? null,
+      change: null,
+      changePct: null,
       cached: false,
       fallback: true,
     })

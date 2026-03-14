@@ -14,8 +14,8 @@ interface Props {
 
 interface PriceInfo {
   price: number
-  change: number      // 등락액
-  changePct: number   // 등락률 %
+  change: number | null
+  changePct: number | null
 }
 
 function useLivePrices(tickers: string[]) {
@@ -29,10 +29,14 @@ function useLivePrices(tickers: string[]) {
         .then(r => r.json())
         .then(d => {
           if (d.price) {
-            const base = ETF_DATA[ticker]?.price ?? d.price
-            const change = d.price - base
-            const changePct = (change / base) * 100
-            setPrices(prev => ({ ...prev, [ticker]: { price: d.price, change, changePct } }))
+            setPrices(prev => ({
+              ...prev,
+              [ticker]: {
+                price: d.price,
+                change: d.change ?? null,
+                changePct: d.changePct ?? null,
+              }
+            }))
           }
         })
         .finally(() => setLoading(prev => ({ ...prev, [ticker]: false })))
@@ -119,7 +123,6 @@ export default function MultiETF({ allocations, onChange }: Props) {
           const etf = ETF_DATA[a.ticker]
           const pct = total > 0 ? Math.round((a.monthly / total) * 100) : 0
           const info = prices[a.ticker]
-          const isUp = info ? info.changePct >= 0 : null
 
           return (
             <div key={a.ticker} className="bg-slate-50 rounded-xl p-3">
@@ -132,19 +135,23 @@ export default function MultiETF({ allocations, onChange }: Props) {
               </div>
 
               {/* 현재기준가 + 등락폭 */}
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
                 {loading[a.ticker] ? (
                   <span className="text-xs text-slate-400">조회 중...</span>
                 ) : info ? (
                   <>
                     <span className="text-xs text-slate-500">현재기준가</span>
                     <span className="text-xs font-semibold text-slate-700">${info.price.toFixed(2)}</span>
-                    <span className={`text-xs font-semibold ${isUp ? 'text-blue-500' : 'text-red-500'}`}>
-                      {isUp ? '▲' : '▼'} {Math.abs(info.changePct).toFixed(2)}%
-                    </span>
-                    <span className={`text-xs ${isUp ? 'text-blue-400' : 'text-red-400'}`}>
-                      ({isUp ? '+' : ''}{info.change.toFixed(2)})
-                    </span>
+                    {info.changePct !== null ? (
+                      <>
+                        <span className={`text-xs font-semibold ${info.changePct >= 0 ? 'text-blue-500' : 'text-red-500'}`}>
+                          {info.changePct >= 0 ? '▲' : '▼'} {Math.abs(info.changePct).toFixed(2)}%
+                        </span>
+                        <span className={`text-xs ${info.changePct >= 0 ? 'text-blue-400' : 'text-red-400'}`}>
+                          ({info.changePct >= 0 ? '+' : ''}{info.change?.toFixed(2)})
+                        </span>
+                      </>
+                    ) : null}
                   </>
                 ) : (
                   <>
