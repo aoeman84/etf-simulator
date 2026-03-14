@@ -282,6 +282,24 @@ function NumberSlider({ label, value, min, max, step, display, unit, onChange }:
   label: string; value: number; min: number; max: number; step: number
   display: string; unit: string; onChange: (v: number) => void
 }) {
+  const [inputVal, setInputVal] = useState(String(value))
+
+  useEffect(() => { setInputVal(String(value)) }, [value])
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value
+    setInputVal(raw)
+    const num = parseInt(raw, 10)
+    if (!isNaN(num) && num >= min && num <= max) onChange(num)
+  }
+
+  function handleBlur() {
+    const num = parseInt(inputVal, 10)
+    const clamped = isNaN(num) ? min : Math.min(max, Math.max(min, num))
+    setInputVal(String(clamped))
+    onChange(clamped)
+  }
+
   return (
     <div>
       <div className="flex justify-between mb-1">
@@ -294,11 +312,10 @@ function NumberSlider({ label, value, min, max, step, display, unit, onChange }:
           className="flex-1 accent-blue-600" style={{height: '28px'}} />
         <div className="flex items-center gap-1 flex-shrink-0">
           <input
-            type="number" min={min} max={max} step={step} value={value}
-            onChange={e => {
-              const v = Math.min(max, Math.max(min, Number(e.target.value)))
-              onChange(isNaN(v) ? min : v)
-            }}
+            type="number" min={min} max={max} step={step}
+            value={inputVal}
+            onChange={handleChange}
+            onBlur={handleBlur}
             className="w-16 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
             inputMode="numeric"
           />

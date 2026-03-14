@@ -1,9 +1,10 @@
 'use client'
+import { useState, useEffect } from 'react'
 import { ETF_DATA } from '@/lib/simulator'
 
 export interface ETFAllocation {
   ticker: string
-  monthly: number // 만원
+  monthly: number
 }
 
 interface Props {
@@ -11,11 +12,51 @@ interface Props {
   onChange: (allocations: ETFAllocation[]) => void
 }
 
+// 입력칸별로 문자열 상태를 따로 관리하는 서브 컴포넌트
+function MonthlyInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [inputVal, setInputVal] = useState(String(value))
+
+  // 외부 value 변경(슬라이더) 반영
+  useEffect(() => {
+    setInputVal(String(value))
+  }, [value])
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value
+    setInputVal(raw) // 빈칸도 허용
+
+    const num = parseInt(raw, 10)
+    if (!isNaN(num) && num >= 10 && num <= 2000) {
+      onChange(num)
+    }
+  }
+
+  function handleBlur() {
+    // 포커스 잃으면 유효 범위로 고정
+    const num = parseInt(inputVal, 10)
+    const clamped = isNaN(num) ? 10 : Math.min(2000, Math.max(10, num))
+    setInputVal(String(clamped))
+    onChange(clamped)
+  }
+
+  return (
+    <input
+      type="number"
+      min={10} max={2000} step={10}
+      value={inputVal}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      className="w-16 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
+      inputMode="numeric"
+    />
+  )
+}
+
 export default function MultiETF({ allocations, onChange }: Props) {
   function toggleETF(ticker: string) {
     const exists = allocations.find(a => a.ticker === ticker)
     if (exists) {
-      if (allocations.length === 1) return // 최소 1개
+      if (allocations.length === 1) return
       onChange(allocations.filter(a => a.ticker !== ticker))
     } else {
       onChange([...allocations, { ticker, monthly: 100 }])
@@ -30,7 +71,6 @@ export default function MultiETF({ allocations, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      {/* ETF 선택 버튼 */}
       <div>
         <label className="text-sm font-medium text-slate-700 mb-2 block">ETF 선택 (복수 가능)</label>
         <div className="grid grid-cols-5 gap-1.5">
@@ -50,7 +90,6 @@ export default function MultiETF({ allocations, onChange }: Props) {
         </div>
       </div>
 
-      {/* ETF별 월 투자금 설정 */}
       <div className="space-y-2">
         {allocations.map(a => {
           const etf = ETF_DATA[a.ticker]
@@ -71,14 +110,9 @@ export default function MultiETF({ allocations, onChange }: Props) {
                   style={{ height: '28px' }}
                 />
                 <div className="flex items-center gap-1 flex-shrink-0">
-                  <input
-                    type="number" min={10} max={2000} step={10} value={a.monthly}
-                    onChange={e => {
-                      const v = Math.min(2000, Math.max(10, Number(e.target.value)))
-                      updateMonthly(a.ticker, isNaN(v) ? 10 : v)
-                    }}
-                    className="w-16 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
-                    inputMode="numeric"
+                  <MonthlyInput
+                    value={a.monthly}
+                    onChange={v => updateMonthly(a.ticker, v)}
                   />
                   <span className="text-xs text-slate-500">만</span>
                 </div>
@@ -88,7 +122,6 @@ export default function MultiETF({ allocations, onChange }: Props) {
         })}
       </div>
 
-      {/* 총합 */}
       <div className="flex justify-between items-center px-1">
         <span className="text-sm text-slate-500">총 월 투자금액</span>
         <span className="text-sm font-bold text-blue-600">{total.toLocaleString()}만원</span>
