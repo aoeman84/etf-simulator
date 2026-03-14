@@ -3,43 +3,34 @@ import { useState } from 'react'
 
 export interface ScenarioSettings {
   mode: 'optimistic' | 'neutral' | 'pessimistic' | 'custom'
-  priceCAGRAdj: number    // 주가 CAGR 조정값 (0 = 역사적 그대로)
-  divGrowthAdj: number    // 배당성장 조정값
-  inflationRate: number   // 인플레이션 (실질 수익률 계산용)
+  priceCAGRAdj: number
+  divGrowthAdj: number
+  inflationRate: number
 }
 
-export const SCENARIOS: Record<string, { label: string; emoji: string; desc: string; priceCAGRAdj: number; divGrowthAdj: number; color: string }> = {
+export const SCENARIOS: Record<string, {
+  label: string; emoji: string; desc: string
+  priceCAGRAdj: number; divGrowthAdj: number; color: string
+}> = {
   optimistic: {
-    label: '낙관',
-    emoji: '🟢',
-    color: 'green',
+    label: '낙관', emoji: '🟢', color: 'green',
     desc: '2011~2024 강세장 역사적 수치 그대로 적용. S&P500 장기 평균 성장 지속 가정.',
-    priceCAGRAdj: 0,
-    divGrowthAdj: 0,
+    priceCAGRAdj: 0, divGrowthAdj: 0,
   },
   neutral: {
-    label: '중립',
-    emoji: '🟡',
-    color: 'amber',
+    label: '중립', emoji: '🟡', color: 'amber',
     desc: '금리 정상화 및 ETF 성숙 단계 진입 감안. 주가 CAGR -2%, 배당성장 -3% 조정.',
-    priceCAGRAdj: -2,
-    divGrowthAdj: -3,
+    priceCAGRAdj: -2, divGrowthAdj: -3,
   },
   pessimistic: {
-    label: '비관',
-    emoji: '🔴',
-    color: 'red',
+    label: '비관', emoji: '🔴', color: 'red',
     desc: '고금리 장기화 + 경기침체 시나리오. 주가 CAGR 역사적 절반, 배당성장 0% 가정.',
-    priceCAGRAdj: -999, // 절반 처리는 simulator에서
-    divGrowthAdj: -999,
+    priceCAGRAdj: -999, divGrowthAdj: -999,
   },
   custom: {
-    label: '직접설정',
-    emoji: '⚙️',
-    color: 'blue',
+    label: '직접설정', emoji: '⚙️', color: 'blue',
     desc: '주가 CAGR과 배당성장률을 직접 조정하세요.',
-    priceCAGRAdj: 0,
-    divGrowthAdj: 0,
+    priceCAGRAdj: 0, divGrowthAdj: 0,
   },
 }
 
@@ -50,34 +41,36 @@ interface Props {
 
 export default function ScenarioModal({ scenario, onChange }: Props) {
   const [open, setOpen] = useState(false)
-
   const current = SCENARIOS[scenario.mode]
+
+  const btnClass = {
+    optimistic: 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100',
+    neutral:    'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100',
+    pessimistic:'bg-red-50 border-red-200 text-red-700 hover:bg-red-100',
+    custom:     'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
+  }[scenario.mode]
 
   return (
     <>
+      {/* 설정 아이콘 없이 버튼 자체가 팝업 트리거 */}
       <button
         onClick={() => setOpen(true)}
-        className={`flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-all ${
-          scenario.mode === 'optimistic' ? 'bg-green-50 border-green-200 text-green-700' :
-          scenario.mode === 'pessimistic' ? 'bg-red-50 border-red-200 text-red-700' :
-          scenario.mode === 'neutral' ? 'bg-amber-50 border-amber-200 text-amber-700' :
-          'bg-blue-50 border-blue-200 text-blue-700'
-        }`}
+        className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${btnClass}`}
         title="시나리오 설정"
       >
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-          <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492zM5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0z"/>
-          <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52l-.094-.319zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.474l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115l.094-.319z"/>
-        </svg>
         {current.emoji} {current.label}
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
           style={{ background: 'rgba(0,0,0,0.5)' }}
-          onClick={() => setOpen(false)}>
-          <div className="bg-white w-full sm:rounded-2xl sm:max-w-md max-h-[90vh] overflow-y-auto rounded-t-2xl"
-            onClick={e => e.stopPropagation()}>
+          onClick={() => setOpen(false)}
+        >
+          <div
+            className="bg-white w-full sm:rounded-2xl sm:max-w-md max-h-[90vh] overflow-y-auto rounded-t-2xl"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-bold">📐 시나리오 설정</h2>
@@ -99,10 +92,10 @@ export default function ScenarioModal({ scenario, onChange }: Props) {
                     }}
                     className={`w-full text-left p-3 rounded-xl border-2 transition-all ${
                       scenario.mode === key
-                        ? key === 'optimistic' ? 'border-green-400 bg-green-50' :
-                          key === 'pessimistic' ? 'border-red-400 bg-red-50' :
-                          key === 'neutral' ? 'border-amber-400 bg-amber-50' :
-                          'border-blue-400 bg-blue-50'
+                        ? key === 'optimistic' ? 'border-green-400 bg-green-50'
+                        : key === 'pessimistic' ? 'border-red-400 bg-red-50'
+                        : key === 'neutral' ? 'border-amber-400 bg-amber-50'
+                        : 'border-blue-400 bg-blue-50'
                         : 'border-slate-200 hover:border-slate-300 bg-white'
                     }`}>
                     <div className="flex items-center justify-between mb-1">

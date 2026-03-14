@@ -9,9 +9,7 @@ import TaxSummary from '@/components/TaxSummary'
 import InstallPrompt from '@/components/InstallPrompt'
 import Footer from '@/components/Footer'
 import ScenarioModal, { ScenarioSettings } from '@/components/ScenarioModal'
-import GoalCalculator from '@/components/GoalCalculator'
 import ShareButton from '@/components/ShareButton'
-import ActualRecord from '@/components/ActualRecord'
 import MultiETF, { ETFAllocation } from '@/components/MultiETF'
 import { simulateMulti, fmtKRW } from '@/lib/simulator'
 import { DEFAULT_TAX } from '@/lib/tax'
@@ -62,7 +60,6 @@ export default function DashboardPage() {
   const selectedResult = results.find(r => r.year === selectedYear) ?? last
   const totalMonthly = allocations.reduce((s, a) => s + a.monthly, 0)
 
-  // 실질 수익률 (인플레이션 반영)
   function realValue(nominalKRW: number, yearsN: number): number {
     return nominalKRW / Math.pow(1 + scenario.inflationRate / 100, yearsN)
   }
@@ -81,15 +78,18 @@ export default function DashboardPage() {
     setTimeout(() => setSaved(false), 3000)
   }
 
-  const scenarioColors = {
-    optimistic: 'text-green-600', neutral: 'text-amber-600',
-    pessimistic: 'text-red-600', custom: 'text-blue-600'
-  }
-
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar
         titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} />}
+        shareSlot={
+          <ShareButton
+            results={results}
+            allocations={allocations}
+            years={years}
+            taxEnabled={tax.enabled}
+          />
+        }
         rightSlot={
           <button onClick={savePortfolio} disabled={saving} className="btn-primary text-sm flex items-center gap-1.5">
             {saved ? '✓ 저장됨' : saving ? '저장 중...' : '💾 저장'}
@@ -98,13 +98,6 @@ export default function DashboardPage() {
       />
       <InstallPrompt />
       <main className="max-w-6xl mx-auto px-4 py-4">
-
-        {/* 빠른 액션 버튼 */}
-        <div className="flex gap-2 mb-4 flex-wrap">
-          <GoalCalculator />
-          <ShareButton results={results} allocations={allocations} years={years} taxEnabled={tax.enabled} />
-          <ActualRecord />
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* 왼쪽 패널 */}
@@ -126,7 +119,7 @@ export default function DashboardPage() {
                   <NumberSlider label="투자 기간" value={years} min={1} max={30} step={1}
                     display={`${years}년`} unit="년" onChange={setYears} />
                   <NumberSlider
-                    label={fxLoaded ? "환율 ● 실시간" : "환율 (원/달러)"}
+                    label={fxLoaded ? '환율 ● 실시간' : '환율 (원/달러)'}
                     value={fxRate} min={1000} max={1800} step={10}
                     display={`${fxRate.toLocaleString()}원`} unit="원" onChange={setFxRate}
                     highlight={fxLoaded}
@@ -230,12 +223,12 @@ export default function DashboardPage() {
 
             {/* 테이블 */}
             <div className="card overflow-hidden">
-              <div className="overflow-x-auto" style={{WebkitOverflowScrolling: 'touch' as any}}>
-                <table className="w-full text-sm" style={{minWidth: '500px'}}>
+              <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' as any }}>
+                <table className="w-full text-sm" style={{ minWidth: '500px' }}>
                   <thead className="bg-slate-50 border-b border-slate-200">
                     <tr>
                       <th className="text-left px-3 py-3 font-medium text-slate-500 text-xs whitespace-nowrap sticky left-0 bg-slate-50 z-10">연도</th>
-                      {['투자원금','포트폴리오','수익률',
+                      {['투자원금', '포트폴리오', '수익률',
                         tax.enabled ? '세후 월배당' : '월 배당금',
                         scenario.inflationRate > 0 ? '실질 포트폴리오' : '',
                         tax.enabled ? '세금 부담' : ''].filter(Boolean).map(h => (
@@ -249,7 +242,7 @@ export default function DashboardPage() {
                         className={`hover:bg-slate-50 cursor-pointer ${r.year === selectedYear ? 'bg-blue-50' : ''}`}
                         onClick={() => setSelectedYear(r.year)}>
                         <td className="px-3 py-3 font-medium whitespace-nowrap sticky left-0 bg-white z-10"
-                          style={{boxShadow:'2px 0 4px rgba(0,0,0,0.04)'}}>
+                          style={{ boxShadow: '2px 0 4px rgba(0,0,0,0.04)' }}>
                           {r.year}년차
                           {r.tax.exceedsThreshold && tax.enabled && <span className="ml-1 text-xs text-orange-500">⚠️</span>}
                         </td>
@@ -322,11 +315,11 @@ function NumberSlider({ label, value, min, max, step, display, unit, onChange, h
       <div className="flex items-center gap-2">
         <input type="range" min={min} max={max} step={step} value={value}
           onChange={e => onChange(Number(e.target.value))}
-          className="flex-1 accent-blue-600" style={{height:'28px'}} />
+          className="flex-1 accent-blue-600" style={{ height: '28px' }} />
         <div className="flex items-center gap-1 flex-shrink-0">
           <input type="number" min={min} max={max} step={step} value={inputVal}
-            onChange={e => { setInputVal(e.target.value); const n=parseInt(e.target.value,10); if(!isNaN(n)&&n>=min&&n<=max) onChange(n) }}
-            onBlur={() => { const n=parseInt(inputVal,10); const c=isNaN(n)?min:Math.min(max,Math.max(min,n)); setInputVal(String(c)); onChange(c) }}
+            onChange={e => { setInputVal(e.target.value); const n = parseInt(e.target.value, 10); if (!isNaN(n) && n >= min && n <= max) onChange(n) }}
+            onBlur={() => { const n = parseInt(inputVal, 10); const c = isNaN(n) ? min : Math.min(max, Math.max(min, n)); setInputVal(String(c)); onChange(c) }}
             className="w-16 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
             inputMode="numeric" />
           <span className="text-xs text-slate-500">{unit}</span>
