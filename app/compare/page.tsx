@@ -18,24 +18,47 @@ export default function ComparePage() {
   const [monthly, setMonthly] = useState(500)
   const [years, setYears] = useState(10)
   const [fxRate, setFxRate] = useState(1350)
+  const [fxLoaded, setFxLoaded] = useState(false)
   const [drip, setDrip] = useState(true)
   const [compareResults, setCompareResults] = useState<Record<string, YearResult[]>>({})
   const [shared, setShared] = useState(false)
 
+  // 실시간 ETF 가격 (ticker → price)
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({})
+
   // 실시간 환율
   useEffect(() => {
     fetch('/api/fx-rate').then(r => r.json()).then(d => {
-      if (d.rate) setFxRate(d.rate)
+      if (d.rate) { setFxRate(d.rate); setFxLoaded(true) }
     }).catch(() => {})
   }, [])
 
+  // 실시간 ETF 가격 — 모든 티커
+  useEffect(() => {
+    ALL_TICKERS.forEach(ticker => {
+      fetch(`/api/etf-price?ticker=${ticker}`)
+        .then(r => r.json())
+        .then(d => {
+          if (d.price) {
+            setLivePrices(prev => ({ ...prev, [ticker]: d.price }))
+          }
+        })
+        .catch(() => {})
+    })
+  }, [])
+
+  // 시뮬레이션 — 실시간 가격 반영
   useEffect(() => {
     const res: Record<string, YearResult[]> = {}
     selected.forEach(t => {
-      res[t] = simulate(ETF_DATA[t], monthly * 10000, years, fxRate, drip)
+      // 실시간 가격이 있으면 덮어쓴 ETF 데이터로 시뮬레이션
+      const etf = livePrices[t]
+        ? { ...ETF_DATA[t], price: livePrices[t] }
+        : ETF_DATA[t]
+      res[t] = simulate(etf, monthly * 10000, years, fxRate, drip)
     })
     setCompareResults(res)
-  }, [selected, monthly, years, fxRate, drip])
+  }, [selected, monthly, years, fxRate, drip, livePrices])
 
   async function shareResult() {
     const lines = selected.map(t => {
@@ -65,8 +88,8 @@ export default function ComparePage() {
     <div className="min-h-screen bg-slate-50">
       <Navbar />
       <main className="max-w-6xl mx-auto px-4 py-4">
-
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+
           {/* Controls */}
           <div className="card p-6 space-y-5 h-fit">
             <div>
@@ -75,6 +98,7 @@ export default function ComparePage() {
                 {ALL_TICKERS.map(t => {
                   const etf = ETF_DATA[t]
                   const active = selected.includes(t)
+                  const livePrice = livePrices[t]
                   return (
                     <button key={t} onClick={() => toggleTicker(t)}
                       className={`w-full text-left px-3 py-2 rounded-xl border text-sm transition-all ${
@@ -87,6 +111,9 @@ export default function ComparePage() {
                       <div className="flex gap-3 mt-1 text-xs">
                         <span>배당 {etf.divYield}%</span>
                         <span>주가↑ {etf.priceCAGR}%</span>
+                        {livePrice && (
+                          <span className="text-green-600 font-medium">${livePrice.toFixed(2)}</span>
+                        )}
                       </div>
                     </button>
                   )
@@ -99,8 +126,18 @@ export default function ComparePage() {
                 display={`${monthly.toLocaleString()}만원`} onChange={setMonthly} />
               <SliderField label="투자 기간" value={years} min={1} max={30} step={1}
                 display={`${years}년`} onChange={setYears} />
-              <SliderField label="환율" value={fxRate} min={1000} max={1800} step={10}
-                display={`${fxRate.toLocaleString()}원`} onChange={setFxRate} />
+              <div>
+                <div className="flex justify-between mb-1">
+                  <label className="text-sm text-slate-600 flex items-center gap-1">
+                    환율
+                    {fxLoaded && <span className="text-xs text-green-500">● 실시간</span>}
+                  </label>
+                  <span className="text-sm font-semibold text-blue-600">{fxRate.toLocaleString()}원</span>
+                </div>
+                <input type="range" min={1000} max={1800} step={10} value={fxRate}
+                  onChange={e => setFxRate(Number(e.target.value))}
+                  className="w-full accent-blue-600" />
+              </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="drip2" checked={drip}
                   onChange={e => setDrip(e.target.checked)} className="w-4 h-4 accent-blue-600" />
@@ -115,11 +152,24 @@ export default function ComparePage() {
             <div className="flex justify-end">
               <button
                 onClick={shareResult}
-                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${shared ? 'border-green-300 bg-green-50 text-green-600' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'}`}
+                className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all ${
+                  shared
+                    ? 'border-green-300 bg-green-50 text-green-600'
+                    : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+                }`}
               >
-                {shared ? '✅ 복사됨' : <><svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/><path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/></svg>결과 공유</>}
+                {shared ? '✅ 복사됨' : (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                      <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                      <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+                    </svg>
+                    결과 공유
+                  </>
+                )}
               </button>
             </div>
+
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {selected.map(t => {
@@ -157,10 +207,15 @@ export default function ComparePage() {
               <CompareChart results={compareResults} years={years} />
             </div>
 
-            {/* Comparison table */}
+            {/* Comparison table — 실시간 가격 반영 */}
             <div className="card overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-100">
+              <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
                 <h2 className="text-sm font-medium text-slate-700">ETF 기본 정보 비교</h2>
+                {Object.keys(livePrices).length > 0 && (
+                  <span className="text-xs text-green-500 flex items-center gap-1">
+                    ● 실시간 가격 반영
+                  </span>
+                )}
               </div>
               <table className="w-full text-sm">
                 <thead className="bg-slate-50">
@@ -175,6 +230,7 @@ export default function ComparePage() {
                     const etf = ETF_DATA[t]
                     const r = compareResults[t]
                     const last = r?.[r.length - 1]
+                    const livePrice = livePrices[t]
                     return (
                       <tr key={t} className="hover:bg-slate-50">
                         <td className="px-4 py-3">
@@ -183,7 +239,12 @@ export default function ComparePage() {
                             <span className="font-semibold">{t}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3">${etf.price.toFixed(2)}</td>
+                        <td className="px-4 py-3">
+                          {livePrice
+                            ? <span className="font-medium text-slate-800">${livePrice.toFixed(2)}</span>
+                            : <span className="text-slate-500">${etf.price.toFixed(2)}</span>
+                          }
+                        </td>
                         <td className="px-4 py-3 text-amber-600">{etf.divYield}%</td>
                         <td className="px-4 py-3 text-blue-600">{etf.divGrowthCAGR}%</td>
                         <td className="px-4 py-3 text-green-600">{etf.priceCAGR}%</td>

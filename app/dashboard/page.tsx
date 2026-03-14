@@ -117,41 +117,57 @@ export default function DashboardPage() {
 
             {activeTab === 'simulator' && (
               <div className="card p-5 space-y-5">
-                {/* ETF 선택 헤더 + 저장/공유 버튼 */}
-                <div>
-                  <MultiETF allocations={allocations} onChange={setAllocations} />
-                </div>
-
-                {/* 저장 / 공유 버튼 — ETF 선택 바로 아래 */}
-                <div className="flex gap-2 pt-1">
-                  <button
-                    onClick={savePortfolio}
-                    disabled={saving}
-                    className="flex-1 flex items-center justify-center gap-1.5 text-sm font-medium py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-all"
-                  >
-                    {saved ? '✓ 저장됨' : saving ? '저장 중...' : '💾 저장'}
-                  </button>
-                  <button
-                    onClick={shareResult}
-                    className={`flex items-center justify-center gap-1.5 text-sm font-medium px-4 py-2 rounded-xl border transition-all ${
-                      shared
-                        ? 'border-green-300 bg-green-50 text-green-600'
-                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    {shared ? (
-                      <>✅ 복사됨</>
-                    ) : (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-                          <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
-                          <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
-                        </svg>
-                        공유
-                      </>
-                    )}
-                  </button>
-                </div>
+                {/* ETF 선택 — 헤더 옆에 저장/공유 아이콘 버튼 */}
+                <MultiETF
+                  allocations={allocations}
+                  onChange={setAllocations}
+                  actionSlot={
+                    <>
+                      {/* 저장 아이콘 버튼 */}
+                      <button
+                        onClick={savePortfolio}
+                        disabled={saving}
+                        title={saved ? '저장됨' : '포트폴리오 저장'}
+                        className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-all disabled:opacity-40 ${
+                          saved
+                            ? 'border-blue-300 bg-blue-50 text-blue-600'
+                            : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                        }`}
+                      >
+                        {saved ? (
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+                          </svg>
+                        ) : (
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 9.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h4.5a.5.5 0 0 1 0 1H2z"/>
+                          </svg>
+                        )}
+                      </button>
+                      {/* 공유 아이콘 버튼 */}
+                      <button
+                        onClick={shareResult}
+                        title={shared ? '복사됨!' : '결과 공유'}
+                        className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-all ${
+                          shared
+                            ? 'border-green-300 bg-green-50 text-green-600'
+                            : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                        }`}
+                      >
+                        {shared ? (
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z"/>
+                          </svg>
+                        ) : (
+                          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z"/>
+                            <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"/>
+                          </svg>
+                        )}
+                      </button>
+                    </>
+                  }
+                />
 
                 <div className="border-t border-slate-100 pt-4 space-y-4">
                   <NumberSlider label="투자 기간" value={years} min={1} max={30} step={1}

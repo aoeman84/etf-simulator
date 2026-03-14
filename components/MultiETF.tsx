@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, ReactNode } from 'react'
 import { ETF_DATA } from '@/lib/simulator'
 
 export interface ETFAllocation {
@@ -10,6 +10,7 @@ export interface ETFAllocation {
 interface Props {
   allocations: ETFAllocation[]
   onChange: (allocations: ETFAllocation[]) => void
+  actionSlot?: ReactNode  // ← 헤더 오른쪽에 배치할 아이콘 버튼들
 }
 
 interface PriceInfo {
@@ -48,7 +49,6 @@ function useLivePrices(tickers: string[]) {
 
 function MonthlyInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const [inputVal, setInputVal] = useState(String(value))
-
   useEffect(() => { setInputVal(String(value)) }, [value])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -57,7 +57,6 @@ function MonthlyInput({ value, onChange }: { value: number; onChange: (v: number
     const num = parseInt(raw, 10)
     if (!isNaN(num) && num >= 10 && num <= 2000) onChange(num)
   }
-
   function handleBlur() {
     const num = parseInt(inputVal, 10)
     const clamped = isNaN(num) ? 10 : Math.min(2000, Math.max(10, num))
@@ -66,18 +65,14 @@ function MonthlyInput({ value, onChange }: { value: number; onChange: (v: number
   }
 
   return (
-    <input
-      type="number" min={10} max={2000} step={10}
-      value={inputVal}
-      onChange={handleChange}
-      onBlur={handleBlur}
+    <input type="number" min={10} max={2000} step={10} value={inputVal}
+      onChange={handleChange} onBlur={handleBlur}
       className="w-16 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
-      inputMode="numeric"
-    />
+      inputMode="numeric" />
   )
 }
 
-export default function MultiETF({ allocations, onChange }: Props) {
+export default function MultiETF({ allocations, onChange, actionSlot }: Props) {
   const activeTickers = allocations.map(a => a.ticker)
   const { prices, loading } = useLivePrices(activeTickers)
 
@@ -100,7 +95,11 @@ export default function MultiETF({ allocations, onChange }: Props) {
   return (
     <div className="space-y-3">
       <div>
-        <label className="text-sm font-medium text-slate-700 mb-2 block">ETF 선택 (복수 가능)</label>
+        {/* 헤더: "ETF 선택 (복수 가능)" + 오른쪽에 actionSlot */}
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-sm font-medium text-slate-700">ETF 선택 (복수 가능)</label>
+          {actionSlot && <div className="flex items-center gap-1.5">{actionSlot}</div>}
+        </div>
         <div className="grid grid-cols-5 gap-1.5">
           {Object.keys(ETF_DATA).map(t => {
             const active = allocations.some(a => a.ticker === t)
@@ -126,7 +125,6 @@ export default function MultiETF({ allocations, onChange }: Props) {
 
           return (
             <div key={a.ticker} className="bg-slate-50 rounded-xl p-3">
-              {/* 종목명 + 비중 */}
               <div className="flex items-center gap-2 mb-1.5">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: etf.color }} />
                 <span className="text-sm font-semibold">{a.ticker}</span>
@@ -134,7 +132,6 @@ export default function MultiETF({ allocations, onChange }: Props) {
                 <span className="text-xs font-medium text-blue-600 flex-shrink-0">{pct}%</span>
               </div>
 
-              {/* 현재기준가 + 등락폭 */}
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 {loading[a.ticker] ? (
                   <span className="text-xs text-slate-400">조회 중...</span>
@@ -161,14 +158,10 @@ export default function MultiETF({ allocations, onChange }: Props) {
                 )}
               </div>
 
-              {/* 슬라이더 + 입력 */}
               <div className="flex items-center gap-2">
-                <input
-                  type="range" min={10} max={2000} step={10} value={a.monthly}
+                <input type="range" min={10} max={2000} step={10} value={a.monthly}
                   onChange={e => updateMonthly(a.ticker, Number(e.target.value))}
-                  className="flex-1 accent-blue-600"
-                  style={{ height: '28px' }}
-                />
+                  className="flex-1 accent-blue-600" style={{ height: '28px' }} />
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <MonthlyInput value={a.monthly} onChange={v => updateMonthly(a.ticker, v)} />
                   <span className="text-xs text-slate-500">만</span>
