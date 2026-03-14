@@ -77,44 +77,16 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar />
-      <InstallPrompt />
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        {/* 제목 + 저장 버튼 */}
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-xl font-bold flex items-center gap-1">
-              ETF 적립식 시뮬레이터
-              <InfoModal />
-            </h1>
-            <p className="text-slate-500 text-xs mt-0.5">
-              {tax.enabled ? '🧾 세후 실수령액 기준' : '세전 기준'} · DRIP 복리 분석
-            </p>
-          </div>
+      <Navbar rightSlot={
+        <div className="flex items-center gap-2">
+          <InfoModal />
           <button onClick={savePortfolio} disabled={saving} className="btn-primary text-sm flex items-center gap-1.5">
             {saved ? '✓ 저장됨' : saving ? '저장 중...' : '💾 저장'}
           </button>
         </div>
-
-        {/* 모바일 페이지 탭 — 데스크탑은 Navbar에 있음 */}
-        <div className="flex md:hidden gap-1.5 mb-4 bg-slate-100 p-1 rounded-xl">
-          {[
-            { href: '/dashboard', label: '시뮬레이터', icon: '📊' },
-            { href: '/compare',   label: 'ETF 비교',   icon: '📉' },
-            { href: '/portfolio', label: '포트폴리오', icon: '💼' },
-          ].map(l => (
-            <a key={l.href} href={l.href}
-              className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-                l.href === '/dashboard'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-500'
-              }`}>
-              <span>{l.icon}</span>
-              <span>{l.label}</span>
-            </a>
-          ))}
-        </div>
-
+      } />
+      <InstallPrompt />
+      <main className="max-w-6xl mx-auto px-4 py-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* 왼쪽 패널 */}
           <div className="space-y-4">

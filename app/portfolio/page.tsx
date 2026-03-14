@@ -52,30 +52,7 @@ export default function PortfolioPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        <div className="mb-4">
-          <h1 className="text-xl font-bold">내 포트폴리오</h1>
-          <p className="text-slate-500 text-xs mt-1">저장된 시뮬레이션 설정을 불러오세요</p>
-        </div>
-
-        {/* 모바일 페이지 탭 */}
-        <div className="flex md:hidden gap-1.5 mb-4 bg-slate-100 p-1 rounded-xl">
-          {[
-            { href: '/dashboard', label: '시뮬레이터', icon: '📊' },
-            { href: '/compare',   label: 'ETF 비교',   icon: '📉' },
-            { href: '/portfolio', label: '포트폴리오', icon: '💼' },
-          ].map(l => (
-            <a key={l.href} href={l.href}
-              className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-                l.href === '/portfolio'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-500'
-              }`}>
-              <span>{l.icon}</span>
-              <span>{l.label}</span>
-            </a>
-          ))}
-        </div>
+      <main className="max-w-4xl mx-auto px-4 py-4">
 
         {loading ? (
           <div className="flex items-center justify-center h-48 text-slate-400">불러오는 중...</div>

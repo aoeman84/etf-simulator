@@ -40,30 +40,7 @@ export default function ComparePage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-4 py-6">
-        <div className="mb-4">
-          <h1 className="text-xl font-bold">ETF 비교</h1>
-          <p className="text-slate-500 text-xs mt-1">동일 조건으로 ETF별 성과를 비교해보세요</p>
-        </div>
-
-        {/* 모바일 페이지 탭 */}
-        <div className="flex md:hidden gap-1.5 mb-4 bg-slate-100 p-1 rounded-xl">
-          {[
-            { href: '/dashboard', label: '시뮬레이터', icon: '📊' },
-            { href: '/compare',   label: 'ETF 비교',   icon: '📉' },
-            { href: '/portfolio', label: '포트폴리오', icon: '💼' },
-          ].map(l => (
-            <a key={l.href} href={l.href}
-              className={`flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-                l.href === '/compare'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-500'
-              }`}>
-              <span>{l.icon}</span>
-              <span>{l.label}</span>
-            </a>
-          ))}
-        </div>
+      <main className="max-w-6xl mx-auto px-4 py-4">
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Controls */}
