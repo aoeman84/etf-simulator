@@ -39,29 +39,29 @@ export default function Navbar({ rightSlot }: Props) {
 
         {/* 탭 + 제목 + 우측 슬롯 */}
         <div className="py-2.5">
-          {/* 페이지 탭 */}
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-xl mb-2.5">
-            {LINKS.map(l => (
-              <Link key={l.href} href={l.href}
-                className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  pathname === l.href
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700'
-                }`}>
-                <span>{l.icon}</span>
-                <span>{l.label}</span>
-              </Link>
-            ))}
+        {/* 제목 + 우측 슬롯 */}
+        <div className="flex items-center justify-between mt-0 mb-2">
+          <div>
+            <h1 className="text-lg font-bold text-slate-800 leading-tight">{page.title}</h1>
+            <p className="text-xs text-slate-400 mt-0.5">{page.desc}</p>
           </div>
+          {rightSlot && <div className="flex-shrink-0 ml-3">{rightSlot}</div>}
+        </div>
 
-          {/* 제목 + 우측 슬롯 */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-bold text-slate-800 leading-tight">{page.title}</h1>
-              <p className="text-xs text-slate-400 mt-0.5">{page.desc}</p>
-            </div>
-            {rightSlot && <div className="flex-shrink-0 ml-3">{rightSlot}</div>}
-          </div>
+        {/* 페이지 탭 */}
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl">
+          {LINKS.map(l => (
+            <Link key={l.href} href={l.href}
+              className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                pathname === l.href
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}>
+              <span>{l.icon}</span>
+              <span>{l.label}</span>
+            </Link>
+          ))}
+        </div>
         </div>
       </div>
     </nav>
