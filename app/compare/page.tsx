@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import CompareChart from '@/components/charts/CompareChart'
 import { ETF_DATA, simulate, fmtKRW } from '@/lib/simulator'
+import ScenarioModal, { ScenarioSettings } from '@/components/ScenarioModal'
 import { YearResult } from '@/types'
 
 const ALL_TICKERS = Object.keys(ETF_DATA)
@@ -22,6 +23,12 @@ export default function ComparePage() {
   const [drip, setDrip] = useState(true)
   const [compareResults, setCompareResults] = useState<Record<string, YearResult[]>>({})
   const [shared, setShared] = useState(false)
+  const [scenario, setScenario] = useState<ScenarioSettings>({
+    mode: 'optimistic',
+    priceCAGRAdj: 0,
+    divGrowthAdj: 0,
+    inflationRate: 2.5,
+  })
 
   // 실시간 ETF 가격 (ticker → price)
   const [livePrices, setLivePrices] = useState<Record<string, number>>({})
@@ -47,18 +54,25 @@ export default function ComparePage() {
     })
   }, [])
 
-  // 시뮬레이션 — 실시간 가격 반영
+  // 시뮬레이션 — 실시간 가격 + 시나리오 반영
   useEffect(() => {
     const res: Record<string, YearResult[]> = {}
     selected.forEach(t => {
-      // 실시간 가격이 있으면 덮어쓴 ETF 데이터로 시뮬레이션
-      const etf = livePrices[t]
+      let etf = livePrices[t]
         ? { ...ETF_DATA[t], price: livePrices[t] }
-        : ETF_DATA[t]
+        : { ...ETF_DATA[t] }
+      // 시나리오 적용
+      if (scenario.mode === 'pessimistic') {
+        etf.priceCAGR = etf.priceCAGR * 0.5
+        etf.divGrowthCAGR = 0
+      } else if (scenario.mode !== 'optimistic') {
+        etf.priceCAGR = Math.max(0, etf.priceCAGR + scenario.priceCAGRAdj)
+        etf.divGrowthCAGR = Math.max(0, etf.divGrowthCAGR + scenario.divGrowthAdj)
+      }
       res[t] = simulate(etf, monthly * 10000, years, fxRate, drip)
     })
     setCompareResults(res)
-  }, [selected, monthly, years, fxRate, drip, livePrices])
+  }, [selected, monthly, years, fxRate, drip, livePrices, scenario])
 
   async function shareResult() {
     const lines = selected.map(t => {
@@ -86,7 +100,7 @@ export default function ComparePage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar />
+      <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} />} />
       <main className="max-w-6xl mx-auto px-4 py-4">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
 

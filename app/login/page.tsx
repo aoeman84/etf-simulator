@@ -28,7 +28,21 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 px-4">
       <div className="card w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <div className="text-2xl font-bold text-blue-600 mb-1">📈 ETF 시뮬레이터</div>
+          {/* Navbar와 동일한 ETF Sim 그라디언트 타이틀 */}
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <span
+              className="font-black tracking-tight"
+              style={{
+                fontSize: '28px',
+                background: 'linear-gradient(135deg, #1d4ed8 0%, #0ea5e9 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+              }}
+            >
+              ETF Sim
+            </span>
+          </div>
           <p className="text-slate-500 text-sm">로그인하여 포트폴리오를 저장하세요</p>
         </div>
 
@@ -36,18 +50,18 @@ export default function LoginPage() {
           <div>
             <label className="text-sm font-medium text-slate-700 block mb-1">이메일</label>
             <input className="input" type="email" value={email}
-              onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
+              onChange={e => setEmail(e.target.value)}
+              placeholder="you@example.com" required />
           </div>
           <div>
             <label className="text-sm font-medium text-slate-700 block mb-1">비밀번호</label>
             <input className="input" type="password" value={password}
-              onChange={e => setPassword(e.target.value)} placeholder="••••••••" required />
+              onChange={e => setPassword(e.target.value)}
+              placeholder="••••••••" required />
           </div>
-
           {error && (
             <div className="bg-red-50 text-red-600 text-sm px-3 py-2 rounded-lg">{error}</div>
           )}
-
           <button type="submit" className="btn-primary w-full" disabled={loading}>
             {loading ? '로그인 중...' : '로그인'}
           </button>
@@ -59,13 +73,13 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* 로그인 페이지 푸터 */}
       <div className="mt-8 text-center space-y-1">
         <p className="text-sm font-medium text-slate-500">
           Designed &amp; Built by <span className="text-blue-600 font-semibold">Chang Bi</span>
         </p>
         <p className="text-xs text-slate-400">Powered by Claude · © 2025</p>
         <p className="text-xs text-slate-400">본 시뮬레이터는 투자 참고용이며 실제 투자 조언이 아닙니다.</p>
+        <p className="text-xs text-slate-300 select-none">v1.09</p>
       </div>
     </div>
   )

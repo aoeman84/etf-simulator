@@ -38,6 +38,7 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [shared, setShared] = useState(false)
+  const [showToast, setShowToast] = useState(false)
   const [selectedYear, setSelectedYear] = useState<number>(10)
   const [fxLoaded, setFxLoaded] = useState(false)
 
@@ -75,7 +76,8 @@ export default function DashboardPage() {
       body: JSON.stringify({ name, settings: { allocations, years, fxRate, drip, tax, scenario } }),
     })
     setSaving(false); setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    setShowToast(true)
+    setTimeout(() => { setSaved(false); setShowToast(false) }, 3000)
   }
 
   async function shareResult() {
@@ -100,6 +102,14 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-50">
       <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} />} />
       <InstallPrompt />
+      {/* 저장 완료 토스트 */}
+      {showToast && (
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
+          <span>💾</span>
+          <span>My PF에 저장됐어요!</span>
+          <a href="/portfolio" className="text-blue-300 underline text-xs ml-1">확인하기 →</a>
+        </div>
+      )}
       <main className="max-w-6xl mx-auto px-4 py-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 

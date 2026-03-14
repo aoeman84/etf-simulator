@@ -39,6 +39,7 @@ export default function PortfolioPage() {
   const [purchases, setPurchases] = useState<Purchase[]>([])
   const [form, setForm] = useState({ date: '', ticker: 'SCHD', amount: '', fxRate: '1350' })
   const [currentFxRate, setCurrentFxRate] = useState(1350)
+  const [toast, setToast] = useState('')
 
   // 저장된 포트폴리오 불러오기
   useEffect(() => {
@@ -120,20 +121,27 @@ export default function PortfolioPage() {
       <Navbar />
       <main className="max-w-4xl mx-auto px-4 py-4">
 
-        {/* 서브 탭 */}
-        <div className="flex bg-white rounded-xl border border-slate-200 p-1 gap-1 mb-5">
+        {/* 서브 탭 — overflow 방지 */}
+        <div className="flex bg-white rounded-xl border border-slate-200 p-1 gap-1 mb-5 w-full">
           <SubTabBtn active={subTab === 'saved'} onClick={() => setSubTab('saved')}>
-            💾 저장된 포트폴리오
+            💾 저장 목록
           </SubTabBtn>
           <SubTabBtn active={subTab === 'records'} onClick={() => setSubTab('records')}>
-            📒 실제 매수 기록
+            📒 매수 기록
             {purchases.length > 0 && (
-              <span className="ml-1.5 bg-blue-100 text-blue-600 text-xs px-1.5 py-0.5 rounded-full">
+              <span className="ml-1 bg-blue-100 text-blue-600 text-xs px-1.5 py-0.5 rounded-full flex-shrink-0">
                 {purchases.length}
               </span>
             )}
           </SubTabBtn>
         </div>
+
+        {/* 토스트 팝업 */}
+        {toast && (
+          <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 animate-fade-in">
+            <span>✅</span> {toast}
+          </div>
+        )}
 
         {/* ─── 저장된 포트폴리오 ─── */}
         {subTab === 'saved' && (
@@ -352,10 +360,10 @@ function SubTabBtn({ active, onClick, children }: {
 }) {
   return (
     <button onClick={onClick}
-      className={`flex-1 text-sm py-2.5 px-3 rounded-lg font-medium transition-all flex items-center justify-center gap-1 ${
+      className={`flex-1 min-w-0 text-sm py-2.5 px-2 rounded-lg font-medium transition-all flex items-center justify-center gap-1 overflow-hidden ${
         active ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-50'
       }`}>
-      {children}
+      <span className="truncate">{children}</span>
     </button>
   )
 }
