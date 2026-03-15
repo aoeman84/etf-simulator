@@ -142,13 +142,16 @@ export function simulateK(params: SimKParams): SimKResult {
       isaBalance   += isaContrib
       isaCostBasis += isaContrib
     }
-    pensionBalance   += pensionContrib
-    irpBalance       += irpContrib
     totalContributed += isaContrib + annualPension * 10000 + irpContrib
 
+    // 수익 먼저 적용 (연말 납입 기준: 납입금은 당해연도 수익 없음)
     isaBalance     *= (1 + rISA)
     pensionBalance *= (1 + rPension)
     irpBalance     *= (1 + rIRP)
+
+    // 연금저축·IRP 납입은 연말 처리 (수익 적용 후 추가)
+    pensionBalance += pensionContrib
+    irpBalance     += irpContrib
 
     let isaTransfer = 0
     let isaTransferCredit = 0

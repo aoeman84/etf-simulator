@@ -27,7 +27,7 @@ const tickerColors: Record<string, string> = {
   QQQ:  '#9333ea',
 }
 
-const tickerAccentClass: Record<string, string> = {
+const TICKER_ACCENT: Record<string, string> = {
   SCHD: 'accent-blue-600',
   VOO:  'accent-green-600',
   QQQ:  'accent-purple-600',
@@ -526,7 +526,7 @@ function AccountCard({
                 <input
                   type="range" min={0} max={100} step={5} value={pct}
                   onChange={e => setAllocPct(ticker, Number(e.target.value))}
-                  className={`flex-1 ${tickerAccentClass[ticker]}`}
+                  className={`flex-1 ${TICKER_ACCENT[ticker]}`}
                 />
                 <PctInput value={pct} onChange={v => setAllocPct(ticker, v)} />
               </div>
