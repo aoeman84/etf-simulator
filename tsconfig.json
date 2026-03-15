@@ -17,5 +17,5 @@
     "paths": { "@/*": ["./*"] }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "etf-v121", "etf-v122", "etf-v123", "etf-v124", "etf-v125", "etf-v126", "etf-v127", "etf-v128"]
 }
