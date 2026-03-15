@@ -9,7 +9,7 @@ export default function Footer() {
         <p className="text-xs text-slate-400">
           본 시뮬레이터는 투자 참고용이며 실제 투자 조언이 아닙니다.
         </p>
-        <p className="text-xs text-slate-300 select-none">v1.23</p>
+        <p className="text-xs text-slate-300 select-none">v1.24</p>
       </div>
     </footer>
   )
