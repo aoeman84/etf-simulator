@@ -271,14 +271,7 @@ export default function DashboardPage() {
             <div className="card p-5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-medium text-slate-500">연도별 자산 성장</h2>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  scenario.mode === 'optimistic' ? 'bg-green-100 text-green-700' :
-                  scenario.mode === 'pessimistic' ? 'bg-red-100 text-red-700' :
-                  scenario.mode === 'neutral' ? 'bg-amber-100 text-amber-700' :
-                  'bg-blue-100 text-blue-700'
-                }`}>
-                  {{ optimistic:'🟢 낙관', neutral:'🟡 중립', pessimistic:'🔴 비관', custom:'⚙️ 직접설정' }[scenario.mode]}
-                </span>
+                  <ScenarioModal scenario={scenario} onChange={setScenario} />
               </div>
               <SimChart results={results} taxEnabled={tax.enabled} />
             </div>
