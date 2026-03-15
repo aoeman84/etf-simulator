@@ -12,6 +12,7 @@ const TABS = [
   { href: '/dashboard', label: 'Sim' },
   { href: '/sim2',      label: 'Sim²' },
   { href: '/compare',   label: 'ETF 비교' },
+  { href: '/simk',      label: 'Sim K' },
   { href: '/portfolio', label: 'My PF' },
 ]
 
