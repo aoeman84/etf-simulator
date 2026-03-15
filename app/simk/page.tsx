@@ -27,6 +27,12 @@ const tickerColors: Record<string, string> = {
   QQQ:  '#9333ea',
 }
 
+const tickerAccentClass: Record<string, string> = {
+  SCHD: 'accent-blue-600',
+  VOO:  'accent-green-600',
+  QQQ:  'accent-purple-600',
+}
+
 interface AccountState {
   monthly: number
   annual: number
@@ -502,8 +508,7 @@ function AccountCard({
                 <input
                   type="range" min={0} max={100} step={5} value={pct}
                   onChange={e => setAllocPct(ticker, Number(e.target.value))}
-                  className="flex-1"
-                  style={{ accentColor: tickerColors[ticker] }}
+                  className={`flex-1 ${tickerAccentClass[ticker]}`}
                 />
                 <PctInput value={pct} onChange={v => setAllocPct(ticker, v)} />
               </div>
