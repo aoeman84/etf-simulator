@@ -18,7 +18,7 @@ export interface SimKParams {
   pension: MonthlyAccount | AnnualAccount
   irp: MonthlyAccount | AnnualAccount
   taxCreditRate: number   // 0.132 or 0.165
-  currentAge: number
+  startAge: number        // 투자 시작 나이
   retirementAge: number
   reinvestRefund: boolean
   scenario?: { priceCAGRAdj: number; divGrowthAdj: number; mode: string }
@@ -98,9 +98,9 @@ function getAnnualWan(acct: MonthlyAccount | AnnualAccount, mode: 'monthly' | 'a
 }
 
 export function simulateK(params: SimKParams): SimKResult {
-  const { mode, isa, pension, irp, taxCreditRate, currentAge, retirementAge, reinvestRefund, scenario } = params
+  const { mode, isa, pension, irp, taxCreditRate, startAge, retirementAge, reinvestRefund, scenario } = params
 
-  const years = Math.max(1, retirementAge - currentAge)
+  const years = Math.max(1, retirementAge - startAge)
 
   const annualISA     = getAnnualWan(isa, mode, 2000)
   const annualPension = getAnnualWan(pension, mode, 1500)
@@ -129,7 +129,7 @@ export function simulateK(params: SimKParams): SimKResult {
   let extraPensionNextYear = 0
 
   for (let y = 1; y <= years; y++) {
-    const age = currentAge + y
+    const age = startAge + y
     const isMatureYear = y % 3 === 0
 
     const isaContrib     = annualISA * 10000

@@ -75,6 +75,7 @@ export default function SimKPage() {
     monthly: 25, annual: 144, etfAlloc: DEFAULT_ALLOC,
   })
   const [taxCreditRate, setTaxCreditRate] = usePersistedState<number>('simk_taxRate', 0.132)
+  const [startAge, setStartAge] = usePersistedState<number>('simk_startAge', 35)
   const [currentAge, setCurrentAge] = usePersistedState<number>('simk_currentAge', 35)
   const [retirementAge, setRetirementAge] = usePersistedState<number>('simk_retirementAge', 65)
   const [reinvestRefund, setReinvestRefund] = usePersistedState<boolean>('simk_reinvest', false)
@@ -86,8 +87,8 @@ export default function SimKPage() {
   const allocValid   = isaValid && pensionValid && irpValid
 
   const baseParams = useMemo(() => ({
-    mode, taxCreditRate, currentAge, retirementAge, reinvestRefund, scenario,
-  }), [mode, taxCreditRate, currentAge, retirementAge, reinvestRefund, scenario])
+    mode, taxCreditRate, startAge, retirementAge, reinvestRefund, scenario,
+  }), [mode, taxCreditRate, startAge, retirementAge, reinvestRefund, scenario])
 
   const primary = useMemo(() => {
     if (!allocValid) return null
@@ -125,7 +126,7 @@ export default function SimKPage() {
     return [...new Set(all.filter(a => a.pct > 0).map(a => a.ticker))]
   }, [isaState, pensionState, irpState])
 
-  const years = Math.max(1, retirementAge - currentAge)
+  const years = Math.max(1, retirementAge - startAge)
   const pensionWarning = primary ? (primary.finalBalance / 20 / 12) > 12_000_000 : false
 
   const totalMonthly = isaState.monthly + pensionState.monthly + irpState.monthly
@@ -173,24 +174,24 @@ export default function SimKPage() {
               label="ISA" color="blue"
               state={isaState} setState={setIsaState}
               mode={mode}
-              monthlyStep={1} annualStep={100}
-              annualLimit={2000}
-              sub="3년 의무보유 · 비과세 200만원"
+              monthlyMax={166} monthlyStep={1}
+              annualMax={2000} annualStep={100}
+              sub="연 2,000만원 한도 · 166만원/월이 최대 효율"
             />
             <AccountCard
               label="연금저축" color="green"
               state={pensionState} setState={setPensionState}
               mode={mode}
-              monthlyStep={1} annualStep={100}
-              annualLimit={1500}
-              sub="세액공제 최대 600만원 · 연금저축 600만+IRP 300만 최적"
+              monthlyMax={125} monthlyStep={1}
+              annualMax={1500} annualStep={100}
+              sub="세액공제 한도 600만원 · 초과 납입은 세혜택 없음"
             />
             <AccountCard
               label="IRP" color="purple"
               state={irpState} setState={setIrpState}
               mode={mode}
-              monthlyStep={1} annualStep={50}
-              annualLimit={300}
+              monthlyMax={25} monthlyStep={1}
+              annualMax={300} annualStep={50}
               sub="연금저축+합산 900만원까지 세액공제"
             />
 
@@ -218,12 +219,19 @@ export default function SimKPage() {
 
             {/* 나이 슬라이더 */}
             <div className="card p-4 space-y-3">
-              <SliderRow label="현재 나이" value={currentAge} min={20} max={60} step={1}
+              <SliderRow label="투자 시작 나이" value={startAge} min={20} max={60} step={1}
+                display={`${startAge}세`} onChange={v => { setStartAge(v); if (currentAge < v) setCurrentAge(v) }} />
+              <SliderRow label="현재 나이" value={currentAge} min={startAge} max={60} step={1}
                 display={`${currentAge}세`} onChange={setCurrentAge} />
               <SliderRow label="연금 수령 나이" value={retirementAge} min={55} max={80} step={1}
                 display={`${retirementAge}세`} onChange={setRetirementAge} />
               <div className="text-xs text-slate-400 text-center">
-                납입 기간: <span className="font-semibold text-slate-600">{years}년</span>
+                총 납입 기간: <span className="font-semibold text-slate-600">{years}년</span>
+                {currentAge > startAge && (
+                  <span className="ml-2 text-slate-400">
+                    (이미 <span className="font-semibold text-green-600">{currentAge - startAge}년</span> 납입 중)
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-3 pt-1">
                 <input type="checkbox" id="reinvest" checked={reinvestRefund}
@@ -394,21 +402,31 @@ export default function SimKPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {primary.rows.map((row: SimKYearRow) => (
-                        <tr key={row.year} className={`hover:bg-slate-50 ${row.isaTransfer > 0 ? 'bg-blue-50' : ''}`}>
-                          <td className="px-3 py-2.5 font-medium whitespace-nowrap sticky left-0 bg-white z-10"
-                            style={{ boxShadow: '2px 0 4px rgba(0,0,0,0.04)' }}>
-                            {row.year}년차
-                            <span className="text-slate-400 ml-1">({row.age}세)</span>
-                            {row.isaTransfer > 0 && <span className="ml-1 text-blue-500 font-bold">↗ ISA 만기</span>}
-                          </td>
-                          <td className="px-3 py-2.5 text-right text-blue-600 whitespace-nowrap">{fmtKRW(row.isaBalance)}</td>
-                          <td className="px-3 py-2.5 text-right text-green-600 whitespace-nowrap">{fmtKRW(row.pensionBalance)}</td>
-                          <td className="px-3 py-2.5 text-right text-purple-600 whitespace-nowrap">{fmtKRW(row.irpBalance)}</td>
-                          <td className="px-3 py-2.5 text-right text-amber-600 font-medium whitespace-nowrap">+{fmtKRW(row.taxCreditThisYear)}</td>
-                          <td className="px-3 py-2.5 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtKRW(row.cumulativeTaxCredit)}</td>
-                        </tr>
-                      ))}
+                      {primary.rows.map((row: SimKYearRow) => {
+                        const isPast    = row.age < currentAge
+                        const isCurrent = row.age === currentAge
+                        const rowBg = isCurrent
+                          ? 'bg-green-50'
+                          : isPast
+                            ? 'bg-slate-50 opacity-60'
+                            : row.isaTransfer > 0 ? 'bg-blue-50' : ''
+                        return (
+                          <tr key={row.year} className={`hover:opacity-100 ${rowBg}`}>
+                            <td className={`px-3 py-2.5 font-medium whitespace-nowrap sticky left-0 z-10 ${isCurrent ? 'bg-green-50' : isPast ? 'bg-slate-50' : 'bg-white'}`}
+                              style={{ boxShadow: '2px 0 4px rgba(0,0,0,0.04)' }}>
+                              {row.year}년차
+                              <span className="text-slate-400 ml-1">({row.age}세)</span>
+                              {isCurrent && <span className="ml-1 text-green-600 font-bold text-xs">● 현재</span>}
+                              {row.isaTransfer > 0 && <span className="ml-1 text-blue-500 font-bold">↗ ISA 만기</span>}
+                            </td>
+                            <td className="px-3 py-2.5 text-right text-blue-600 whitespace-nowrap">{fmtKRW(row.isaBalance)}</td>
+                            <td className="px-3 py-2.5 text-right text-green-600 whitespace-nowrap">{fmtKRW(row.pensionBalance)}</td>
+                            <td className="px-3 py-2.5 text-right text-purple-600 whitespace-nowrap">{fmtKRW(row.irpBalance)}</td>
+                            <td className="px-3 py-2.5 text-right text-amber-600 font-medium whitespace-nowrap">+{fmtKRW(row.taxCreditThisYear)}</td>
+                            <td className="px-3 py-2.5 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtKRW(row.cumulativeTaxCredit)}</td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -433,20 +451,21 @@ interface AccountCardProps {
   state: AccountState
   setState: (s: AccountState | ((prev: AccountState) => AccountState)) => void
   mode: 'monthly' | 'annual'
+  monthlyMax: number
   monthlyStep: number
+  annualMax: number
   annualStep: number
-  annualLimit: number   // 세제혜택 한도 (만원) — 초과 시 경고
   sub: string
 }
 
 function AccountCard({
   label, color, state, setState, mode,
-  monthlyStep, annualStep, annualLimit, sub,
+  monthlyMax, monthlyStep, annualMax, annualStep, sub,
 }: AccountCardProps) {
   const [expanded, setExpanded] = useState(true)
 
-  const colorMap = { blue: 'text-blue-600', green: 'text-green-600', purple: 'text-purple-600' }
-  const accentMap = { blue: '#2563eb', green: '#16a34a', purple: '#9333ea' }
+  const colorMap      = { blue: 'text-blue-600',    green: 'text-green-600',    purple: 'text-purple-600'    }
+  const accentClassMap = { blue: 'accent-blue-600', green: 'accent-green-600', purple: 'accent-purple-600' }
 
   const sum = allocSum(state.etfAlloc)
   const valid = sum === 100
@@ -465,33 +484,25 @@ function AccountCard({
     }))
   }
 
-  const amount     = mode === 'monthly' ? state.monthly : state.annual
-  const sliderMax  = mode === 'monthly' ? Math.ceil(annualLimit / 6) : Math.ceil(annualLimit * 1.5)
-  const step       = mode === 'monthly' ? monthlyStep : annualStep
-  const unit       = mode === 'monthly' ? '만원/월' : '만원/년'
-  const annualAmt  = mode === 'monthly' ? state.monthly * 12 : state.annual
-  const overLimit  = annualAmt > annualLimit
-  const warnText   = overLimit
-    ? `⚠️ 연간 ${annualAmt.toLocaleString()}만원 — 한도(${annualLimit.toLocaleString()}만원) 초과, 초과분 세제혜택 없음`
-    : null
+  const amount = mode === 'monthly' ? state.monthly : state.annual
+  const max    = mode === 'monthly' ? monthlyMax : annualMax
+  const step   = mode === 'monthly' ? monthlyStep : annualStep
+  const unit   = mode === 'monthly' ? '만원/월' : '만원/년'
 
   return (
     <div className="card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className={`text-sm font-semibold ${colorMap[color]}`}>{label}</span>
-        <span className="text-xs text-slate-400">세제혜택 한도 {annualLimit.toLocaleString()}만원/년</span>
+        <span className="text-xs text-slate-400">max {mode === 'monthly' ? `${monthlyMax}만원/월` : `${annualMax}만원/년`}</span>
       </div>
 
       {/* 납입액 슬라이더 + 직접입력 */}
       <AmountInput
-        value={amount} min={0} sliderMax={sliderMax} step={step} unit={unit}
-        accentColor={accentMap[color]}
+        value={amount} min={0} max={max} step={step} unit={unit}
+        accentClass={accentClassMap[color]}
         onChange={setAmount}
       />
-      {warnText
-        ? <div className="text-xs text-orange-500">{warnText}</div>
-        : <div className="text-xs text-slate-400">{sub}</div>
-      }
+      <div className="text-xs text-slate-400">{sub}</div>
 
       {/* ETF 배분 토글 */}
       <div>
@@ -529,35 +540,31 @@ function AccountCard({
 
 // ── 작은 입력 컴포넌트들 ─────────────────────────────────────────────────────
 
-function AmountInput({ value, min, sliderMax, step, unit, accentColor, onChange }: {
-  value: number; min: number; sliderMax: number; step: number; unit: string
-  accentColor: string; onChange: (v: number) => void
+function AmountInput({ value, min, max, step, unit, accentClass, onChange }: {
+  value: number; min: number; max: number; step: number; unit: string
+  accentClass: string; onChange: (v: number) => void
 }) {
   const [inputVal, setInputVal] = useState(String(value))
   useMemo(() => setInputVal(String(value)), [value])
 
-  // 슬라이더는 sliderMax까지, 숫자 직접입력은 상한 없음 (경고로 처리)
-  const sliderValue = Math.min(value, sliderMax)
-
   return (
     <div className="flex items-center gap-2">
       <input
-        type="range" min={min} max={sliderMax} step={step} value={sliderValue}
+        type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
-        className="flex-1"
-        style={{ accentColor }}
+        className={`flex-1 ${accentClass}`}
       />
       <div className="flex items-center gap-1 flex-shrink-0">
         <input
-          type="number" min={min} step={step} value={inputVal}
+          type="number" min={min} max={max} step={step} value={inputVal}
           onChange={e => {
             setInputVal(e.target.value)
             const n = parseInt(e.target.value, 10)
-            if (!isNaN(n) && n >= min) onChange(n)
+            if (!isNaN(n) && n >= min && n <= max) onChange(n)
           }}
           onBlur={() => {
             const n = parseInt(inputVal, 10)
-            const c = isNaN(n) || n < min ? min : n
+            const c = isNaN(n) ? min : Math.min(max, Math.max(min, n))
             setInputVal(String(c))
             onChange(c)
           }}
