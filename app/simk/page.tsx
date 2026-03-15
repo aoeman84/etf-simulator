@@ -10,7 +10,7 @@ import Footer from '@/components/Footer'
 import ScenarioModal, { ScenarioSettings } from '@/components/ScenarioModal'
 import { fmtKRW, ETF_DATA } from '@/lib/simulator'
 import { usePersistedState } from '@/lib/usePersistedState'
-import { simulateK, SimKYearRow } from '@/lib/simulatorK'
+import { simulateK, SimKYearRow, EtfAlloc, AccountAllocations } from '@/lib/simulatorK'
 
 const DEFAULT_SCENARIO: ScenarioSettings = {
   mode: 'optimistic',
@@ -20,6 +20,21 @@ const DEFAULT_SCENARIO: ScenarioSettings = {
 }
 
 const SIMK_TICKERS = ['SCHD', 'VOO', 'QQQ']
+
+const DEFAULT_ALLOCATIONS: AccountAllocations = {
+  isa:     SIMK_TICKERS.map((t, i) => ({ ticker: t, pct: i === 0 ? 100 : 0 })),
+  pension: SIMK_TICKERS.map((t, i) => ({ ticker: t, pct: i === 0 ? 100 : 0 })),
+  irp:     SIMK_TICKERS.map((t, i) => ({ ticker: t, pct: i === 0 ? 100 : 0 })),
+}
+
+function singleTickerAlloc(ticker: string): AccountAllocations {
+  const alloc = SIMK_TICKERS.map(t => ({ ticker: t, pct: t === ticker ? 100 : 0 }))
+  return { isa: alloc, pension: [...alloc], irp: [...alloc] }
+}
+
+function allocSum(allocs: EtfAlloc[]) {
+  return allocs.reduce((s, a) => s + a.pct, 0)
+}
 
 function fmt(n: number) {
   if (n >= 1e8) return `${(n / 1e8).toFixed(1)}억`
@@ -35,64 +50,68 @@ export default function SimKPage() {
   const [isaAnnual, setIsaAnnual] = usePersistedState<number>('simk_isaAnnual', 816)           // 만원
   const [pensionAnnual, setPensionAnnual] = usePersistedState<number>('simk_pensionAnnual', 240)
   const [irpAnnual, setIrpAnnual] = usePersistedState<number>('simk_irpAnnual', 144)
-  const [selectedTickers, setSelectedTickers] = usePersistedState<string[]>('simk_tickers', ['SCHD'])
+  const [allocations, setAllocations] = usePersistedState<AccountAllocations>('simk_allocations', DEFAULT_ALLOCATIONS)
   const [taxCreditRate, setTaxCreditRate] = usePersistedState<number>('simk_taxRate', 0.132)
   const [currentAge, setCurrentAge] = usePersistedState<number>('simk_currentAge', 35)
   const [retirementAge, setRetirementAge] = usePersistedState<number>('simk_retirementAge', 65)
   const [reinvestRefund, setReinvestRefund] = usePersistedState<boolean>('simk_reinvest', false)
   const [scenario, setScenario] = usePersistedState<ScenarioSettings>('simk_scenario', DEFAULT_SCENARIO)
 
-  function toggleTicker(t: string) {
-    setSelectedTickers(prev =>
-      prev.includes(t) ? (prev.length > 1 ? prev.filter(x => x !== t) : prev) : [...prev, t]
-    )
+  function updateAlloc(account: keyof AccountAllocations, ticker: string, pct: number) {
+    setAllocations(prev => ({
+      ...prev,
+      [account]: prev[account].map(a => a.ticker === ticker ? { ...a, pct: Math.max(0, Math.min(100, pct)) } : a),
+    }))
   }
 
-  // 시뮬레이션 결과 (선택된 ETF 각각)
-  const results = useMemo(() => {
-    return selectedTickers.map(ticker => ({
+  const isaValid     = allocSum(allocations.isa) === 100
+  const pensionValid = allocSum(allocations.pension) === 100
+  const irpValid     = allocSum(allocations.irp) === 100
+  const allocValid   = isaValid && pensionValid && irpValid
+
+  const baseParams = useMemo(() => ({
+    mode,
+    totalMonthlyWan: totalMonthly,
+    isaAnnualWan: isaAnnual,
+    pensionAnnualWan: pensionAnnual,
+    irpAnnualWan: irpAnnual,
+    taxCreditRate,
+    currentAge,
+    retirementAge,
+    reinvestRefund,
+    scenario,
+  }), [mode, totalMonthly, isaAnnual, pensionAnnual, irpAnnual,
+      taxCreditRate, currentAge, retirementAge, reinvestRefund, scenario])
+
+  // 내 포트폴리오 시뮬레이션
+  const primary = useMemo(() => {
+    if (!allocValid) return null
+    return simulateK({ ...baseParams, accountAllocations: allocations })
+  }, [baseParams, allocations, allocValid])
+
+  // 단일 ETF 100% 비교 시뮬레이션
+  const comparisonResults = useMemo(() => {
+    return SIMK_TICKERS.map(ticker => ({
       ticker,
-      result: simulateK({
-        mode,
-        totalMonthlyWan: totalMonthly,
-        isaAnnualWan: isaAnnual,
-        pensionAnnualWan: pensionAnnual,
-        irpAnnualWan: irpAnnual,
-        ticker,
-        taxCreditRate,
-        currentAge,
-        retirementAge,
-        reinvestRefund,
-        scenario,
-      }),
+      result: simulateK({ ...baseParams, accountAllocations: singleTickerAlloc(ticker) }),
     }))
-  }, [mode, totalMonthly, isaAnnual, pensionAnnual, irpAnnual,
-      selectedTickers, taxCreditRate, currentAge, retirementAge, reinvestRefund, scenario])
+  }, [baseParams])
 
-  // 첫 번째 ETF 기준 대표값
-  const primary = results[0]?.result
-  const primaryTicker = results[0]?.ticker
-
-  // 차트 데이터 (선택된 각 ETF + 일반계좌)
+  // 차트 데이터
   const chartData = useMemo(() => {
     if (!primary) return []
-    return primary.rows.map((row, i) => {
-      const entry: Record<string, number | string> = {
-        label: `${row.age}세 (${row.year}년)`,
-      }
-      results.forEach(({ ticker, result }) => {
-        entry[`${ticker} 절세`] = Math.round(result.rows[i]?.totalBalance / 1e4) ?? 0
-      })
-      entry['일반 계좌'] = Math.round(results[0].result.rows[i]?.normalBalance / 1e4) ?? 0
-      return entry
-    })
-  }, [results, primary])
+    return primary.rows.map(row => ({
+      label: `${row.age}세 (${row.year}년)`,
+      '내 포트폴리오': Math.round(row.totalBalance / 1e4),
+      '일반 계좌': Math.round(row.normalBalance / 1e4),
+    }))
+  }, [primary])
 
-  const tickerColors: Record<string, string> = {
-    SCHD: '#2563eb',
-    VOO:  '#16a34a',
-    QQQ:  '#9333ea',
-  }
+  // ScenarioModal에 전달할 활성 티커
+  const activeTickers = useMemo(() => {
+    const all = [...allocations.isa, ...allocations.pension, ...allocations.irp]
+    return [...new Set(all.filter(a => a.pct > 0).map(a => a.ticker))]
+  }, [allocations])
 
   const years = Math.max(1, retirementAge - currentAge)
   const pensionWarning = primary ? (primary.finalBalance / 20 / 12) > 12_000_000 : false
@@ -102,9 +121,15 @@ export default function SimKPage() {
   const annualPension = mode === 'monthly' ? Math.min(totalMonthly * 12 * 0.20, 1500) : Math.min(pensionAnnual, 1500)
   const annualIRP     = mode === 'monthly' ? Math.min(totalMonthly * 12 * 0.12, 300)  : Math.min(irpAnnual, 300)
 
+  const tickerColors: Record<string, string> = {
+    SCHD: '#2563eb',
+    VOO:  '#16a34a',
+    QQQ:  '#9333ea',
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={selectedTickers} />} />
+      <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={activeTickers} />} />
 
       <main className="max-w-6xl mx-auto px-4 py-4">
         <div className="mb-4">
@@ -171,32 +196,6 @@ export default function SimKPage() {
                 </div>
               )}
 
-              {/* ETF 선택 */}
-              <div>
-                <label className="text-sm font-medium text-slate-700 block mb-2">ETF 선택</label>
-                <div className="flex flex-wrap gap-2">
-                  {SIMK_TICKERS.map(t => {
-                    const etf = ETF_DATA[t]
-                    const active = selectedTickers.includes(t)
-                    return (
-                      <button key={t}
-                        onClick={() => toggleTicker(t)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                          active
-                            ? 'border-transparent text-white'
-                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                        }`}
-                        style={active ? { background: tickerColors[t] } : {}}>
-                        {t}
-                        <span className="ml-1 font-normal opacity-80">
-                          배당 {etf.divYield}% / CAGR {etf.priceCAGR}%
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
               {/* 세액공제율 */}
               <div>
                 <label className="text-sm font-medium text-slate-700 block mb-2">세액공제율</label>
@@ -241,6 +240,52 @@ export default function SimKPage() {
               </div>
             </div>
 
+            {/* 계좌별 ETF 배분 */}
+            <div className="card p-4 space-y-4">
+              <div className="text-sm font-semibold text-slate-700">계좌별 ETF 배분</div>
+              {(
+                [
+                  { key: 'isa' as const,     label: 'ISA',     color: 'text-blue-600',   valid: isaValid },
+                  { key: 'pension' as const, label: '연금저축', color: 'text-green-600',  valid: pensionValid },
+                  { key: 'irp' as const,     label: 'IRP',     color: 'text-purple-600', valid: irpValid },
+                ]
+              ).map(({ key, label, color, valid }) => {
+                const sum = allocSum(allocations[key])
+                return (
+                  <div key={key}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-xs font-semibold ${color}`}>{label}</span>
+                      <span className={`text-xs font-medium ${valid ? 'text-green-600' : 'text-red-500'}`}>
+                        합계: {sum}% {valid ? '✓' : '⚠'}
+                      </span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {allocations[key].map(({ ticker, pct }) => (
+                        <div key={ticker} className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: tickerColors[ticker] }} />
+                          <span className="text-xs font-medium text-slate-600 w-10 flex-shrink-0">{ticker}</span>
+                          <input
+                            type="range" min={0} max={100} step={5}
+                            value={pct}
+                            onChange={e => updateAlloc(key, ticker, Number(e.target.value))}
+                            className="flex-1 accent-blue-600"
+                            style={{ accentColor: tickerColors[ticker] }}
+                          />
+                          <span className="text-xs font-semibold text-slate-700 w-9 text-right">{pct}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+              {!allocValid && (
+                <div className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
+                  각 계좌의 ETF 비율 합계가 100%가 되어야 합니다.
+                </div>
+              )}
+            </div>
+
             {/* 계좌 한도 안내 */}
             <div className="card p-4">
               <div className="text-xs font-semibold text-slate-600 mb-3">계좌별 규칙 요약</div>
@@ -268,7 +313,7 @@ export default function SimKPage() {
             {primary && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <StatCard label="총 납입원금" value={fmtKRW(primary.totalContributed)} />
-                <StatCard label={`절세 계좌 최종 잔액`} value={fmtKRW(primary.finalBalance)}
+                <StatCard label="절세 계좌 최종 잔액" value={fmtKRW(primary.finalBalance)}
                   color="blue" sub={`${retirementAge}세 기준`} />
                 <StatCard label="일반 계좌 대비 절세 효과"
                   value={primary.taxAdvantage >= 0
@@ -284,70 +329,95 @@ export default function SimKPage() {
               </div>
             )}
 
+            {!allocValid && (
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 text-xs text-orange-700">
+                ⚠️ 계좌별 ETF 비율 합계를 100%로 맞춰야 시뮬레이션 결과가 표시됩니다.
+              </div>
+            )}
+
             {pensionWarning && (
               <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 text-xs text-orange-700">
                 ⚠️ 연간 수령액이 1,200만원을 초과할 수 있습니다. 종합과세 대상이 될 수 있으니 분산 수령을 검토하세요.
               </div>
             )}
 
-            {/* ETF별 비교 표 */}
-            {results.length > 0 && (
-              <div className="card overflow-hidden">
-                <div className="px-4 pt-4 pb-2">
-                  <div className="text-sm font-semibold text-slate-700">ETF별 절세 효과 비교</div>
-                  <div className="text-xs text-slate-400 mt-0.5">동일 납입 조건 · {retirementAge}세 기준</div>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs" style={{ minWidth: '480px' }}>
-                    <thead>
-                      <tr className="border-b border-slate-100 bg-slate-50">
-                        <th className="text-left px-4 py-2.5 font-medium text-slate-500">ETF</th>
-                        <th className="text-right px-3 py-2.5 font-medium text-slate-500">ISA 배당 비과세</th>
-                        <th className="text-right px-3 py-2.5 font-medium text-slate-500">세액공제 누적</th>
-                        <th className="text-right px-3 py-2.5 font-medium text-slate-500">절세 계좌 잔액</th>
-                        <th className="text-right px-4 py-2.5 font-medium text-slate-500">일반 대비 이득</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50">
-                      {results.map(({ ticker, result }) => {
-                        const etf = ETF_DATA[ticker]
-                        const divBenefit = etf.divYield >= 3 ? '높음' : etf.divYield >= 1 ? '보통' : '낮음'
-                        return (
-                          <tr key={ticker} className="hover:bg-slate-50">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                                  style={{ background: tickerColors[ticker] }} />
-                                <span className="font-semibold text-slate-700">{ticker}</span>
-                                <span className="text-slate-400">배당 {etf.divYield}%</span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 text-right">
-                              <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                                divBenefit === '높음' ? 'bg-green-100 text-green-700'
-                                : divBenefit === '보통' ? 'bg-yellow-100 text-yellow-700'
-                                : 'bg-slate-100 text-slate-500'
-                              }`}>{divBenefit}</span>
-                            </td>
-                            <td className="px-3 py-3 text-right font-medium text-blue-600">
-                              {fmtKRW(result.totalTaxCredit)}
-                            </td>
-                            <td className="px-3 py-3 text-right font-semibold text-slate-800">
-                              {fmtKRW(result.finalBalance)}
-                            </td>
-                            <td className={`px-4 py-3 text-right font-semibold ${
-                              result.taxAdvantage >= 0 ? 'text-green-600' : 'text-red-500'
-                            }`}>
-                              {result.taxAdvantage >= 0 ? '+' : ''}{fmtKRW(result.taxAdvantage)}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+            {/* 포트폴리오 vs 단일 ETF 비교 표 */}
+            <div className="card overflow-hidden">
+              <div className="px-4 pt-4 pb-2">
+                <div className="text-sm font-semibold text-slate-700">포트폴리오 절세 효과 비교</div>
+                <div className="text-xs text-slate-400 mt-0.5">동일 납입 조건 · {retirementAge}세 기준</div>
               </div>
-            )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs" style={{ minWidth: '480px' }}>
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50">
+                      <th className="text-left px-4 py-2.5 font-medium text-slate-500">구성</th>
+                      <th className="text-right px-3 py-2.5 font-medium text-slate-500">세액공제 누적</th>
+                      <th className="text-right px-3 py-2.5 font-medium text-slate-500">절세 계좌 잔액</th>
+                      <th className="text-right px-4 py-2.5 font-medium text-slate-500">일반 대비 이득</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {/* 내 포트폴리오 */}
+                    <tr className="bg-blue-50">
+                      <td className="px-4 py-3">
+                        <div className="font-semibold text-blue-700">내 포트폴리오</div>
+                        <div className="text-slate-400 mt-0.5 leading-tight">
+                          {['isa', 'pension', 'irp'].map((acct) => {
+                            const alloc = allocations[acct as keyof AccountAllocations]
+                            const active = alloc.filter(a => a.pct > 0)
+                            if (active.length === 0) return null
+                            const label = acct === 'isa' ? 'ISA' : acct === 'pension' ? '연금' : 'IRP'
+                            return (
+                              <span key={acct} className="mr-2">
+                                {label}: {active.map(a => `${a.ticker} ${a.pct}%`).join('+')}
+                              </span>
+                            )
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 text-right font-medium text-blue-600">
+                        {primary ? fmtKRW(primary.totalTaxCredit) : '-'}
+                      </td>
+                      <td className="px-3 py-3 text-right font-semibold text-slate-800">
+                        {primary ? fmtKRW(primary.finalBalance) : '-'}
+                      </td>
+                      <td className={`px-4 py-3 text-right font-semibold ${
+                        primary && primary.taxAdvantage >= 0 ? 'text-green-600' : 'text-red-500'
+                      }`}>
+                        {primary
+                          ? `${primary.taxAdvantage >= 0 ? '+' : ''}${fmtKRW(primary.taxAdvantage)}`
+                          : '-'}
+                      </td>
+                    </tr>
+                    {/* 단일 ETF 100% 비교 */}
+                    {comparisonResults.map(({ ticker, result }) => (
+                      <tr key={ticker} className="hover:bg-slate-50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{ background: tickerColors[ticker] }} />
+                            <span className="font-semibold text-slate-700">{ticker} 100%</span>
+                            <span className="text-slate-400">배당 {ETF_DATA[ticker].divYield}% / CAGR {ETF_DATA[ticker].priceCAGR}%</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-right font-medium text-blue-600">
+                          {fmtKRW(result.totalTaxCredit)}
+                        </td>
+                        <td className="px-3 py-3 text-right font-semibold text-slate-800">
+                          {fmtKRW(result.finalBalance)}
+                        </td>
+                        <td className={`px-4 py-3 text-right font-semibold ${
+                          result.taxAdvantage >= 0 ? 'text-green-600' : 'text-red-500'
+                        }`}>
+                          {result.taxAdvantage >= 0 ? '+' : ''}{fmtKRW(result.taxAdvantage)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
             {/* 비교 차트 */}
             <div className="card p-5">
@@ -356,7 +426,7 @@ export default function SimKPage() {
                   <h2 className="text-sm font-semibold text-slate-700">절세 계좌 vs 일반 계좌 비교</h2>
                   <p className="text-xs text-slate-400 mt-0.5">일반 계좌: 배당 15.4% 원천징수 · 매도 시 양도세 22% 적용</p>
                 </div>
-                <ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={selectedTickers} />
+                <ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={activeTickers} />
               </div>
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
@@ -369,21 +439,19 @@ export default function SimKPage() {
                     contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                  {selectedTickers.map(t => (
-                    <Line key={t} type="monotone" dataKey={`${t} 절세`}
-                      stroke={tickerColors[t]} strokeWidth={2} dot={false} />
-                  ))}
+                  <Line type="monotone" dataKey="내 포트폴리오"
+                    stroke="#2563eb" strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="일반 계좌"
                     stroke="#94a3b8" strokeWidth={1.5} dot={false} strokeDasharray="5 3" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
 
-            {/* 연도별 테이블 (첫 번째 ETF 기준) */}
+            {/* 연도별 테이블 */}
             {primary && (
               <div className="card overflow-hidden">
                 <div className="px-4 pt-4 pb-1">
-                  <div className="text-sm font-semibold text-slate-700">연도별 잔액 ({primaryTicker} 기준)</div>
+                  <div className="text-sm font-semibold text-slate-700">연도별 잔액 (내 포트폴리오 기준)</div>
                 </div>
                 <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' as any }}>
                   <table className="w-full text-xs" style={{ minWidth: '620px' }}>

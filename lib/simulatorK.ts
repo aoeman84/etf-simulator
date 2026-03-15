@@ -1,5 +1,12 @@
 import { ETF_DATA } from './simulator'
 
+export type EtfAlloc = { ticker: string; pct: number }
+export interface AccountAllocations {
+  isa: EtfAlloc[]
+  pension: EtfAlloc[]
+  irp: EtfAlloc[]
+}
+
 export interface SimKParams {
   mode: 'monthly' | 'annual'
   // monthly mode (만원)
@@ -8,8 +15,8 @@ export interface SimKParams {
   isaAnnualWan: number
   pensionAnnualWan: number
   irpAnnualWan: number
-  // common
-  ticker: string
+  // 계좌별 ETF 배분
+  accountAllocations: AccountAllocations
   taxCreditRate: number   // 0.132 or 0.165
   currentAge: number
   retirementAge: number
@@ -38,7 +45,7 @@ export interface SimKResult {
   rows: SimKYearRow[]
   totalContributed: number
   finalBalance: number           // 수령 나이 기준 총 절세 계좌 잔액
-  normalFinalBalance: number     // 동기간 일반 계좌 잔액
+  normalFinalBalance: number     // 동기간 일반 계좌 잔액 (세후)
   totalTaxCredit: number         // 누적 세액공제 환급 합계
   taxAdvantage: number           // 절세 계좌 - 일반 계좌
   monthlyPension: number         // 연금소득세 후 예상 월 연금
@@ -52,26 +59,53 @@ function pensionTaxRate(age: number): number {
   return 0.055
 }
 
-// 시나리오 적용 총수익률 계산
-function totalReturnRate(ticker: string, scenario?: SimKParams['scenario']): number {
-  const etf = ETF_DATA[ticker]
-  if (!etf) return 0.1
-  let priceCAGR = etf.priceCAGR
-  if (scenario) {
-    if (scenario.mode === 'pessimistic') priceCAGR = priceCAGR * 0.5
-    else priceCAGR = Math.max(0, priceCAGR + scenario.priceCAGRAdj)
+// 계좌별 ETF 배분 가중평균 총수익률
+function weightedReturnRate(allocs: EtfAlloc[], scenario?: SimKParams['scenario']): number {
+  let r = 0
+  for (const { ticker, pct } of allocs) {
+    if (pct === 0) continue
+    const etf = ETF_DATA[ticker]
+    if (!etf) continue
+    let priceCAGR = etf.priceCAGR
+    if (scenario) {
+      if (scenario.mode === 'pessimistic') priceCAGR *= 0.5
+      else priceCAGR = Math.max(0, priceCAGR + scenario.priceCAGRAdj)
+    }
+    r += (priceCAGR + etf.divYield) / 100 * (pct / 100)
   }
-  return (priceCAGR + etf.divYield) / 100
+  return r
+}
+
+// 일반 계좌 비교용 수익률 (배당 15.4% 원천징수 반영)
+function weightedNormalReturnRate(allocs: EtfAlloc[], scenario?: SimKParams['scenario']): number {
+  let r = 0
+  for (const { ticker, pct } of allocs) {
+    if (pct === 0) continue
+    const etf = ETF_DATA[ticker]
+    if (!etf) continue
+    let priceCAGR = etf.priceCAGR
+    if (scenario) {
+      if (scenario.mode === 'pessimistic') priceCAGR *= 0.5
+      else priceCAGR = Math.max(0, priceCAGR + scenario.priceCAGRAdj)
+    }
+    r += (priceCAGR + etf.divYield * (1 - 0.154)) / 100 * (pct / 100)
+  }
+  return r
 }
 
 export function simulateK(params: SimKParams): SimKResult {
   const {
     mode, totalMonthlyWan, isaAnnualWan, pensionAnnualWan, irpAnnualWan,
-    ticker, taxCreditRate, currentAge, retirementAge, reinvestRefund, scenario,
+    accountAllocations: allocs, taxCreditRate, currentAge, retirementAge,
+    reinvestRefund, scenario,
   } = params
 
   const years = Math.max(1, retirementAge - currentAge)
-  const r = totalReturnRate(ticker, scenario)
+
+  // 계좌별 수익률
+  const rISA     = weightedReturnRate(allocs.isa, scenario)
+  const rPension = weightedReturnRate(allocs.pension, scenario)
+  const rIRP     = weightedReturnRate(allocs.irp, scenario)
 
   // 연간 납입액 계산 (만원 단위)
   let annualISA: number, annualPension: number, annualIRP: number
@@ -85,15 +119,14 @@ export function simulateK(params: SimKParams): SimKResult {
     annualIRP     = Math.min(irpAnnualWan, 300)
   }
 
-  // 일반 계좌 비교용 수익률 (배당 15.4% 원천징수 고려)
-  const etf = ETF_DATA[ticker] ?? ETF_DATA['SCHD']
-  let normalPriceCAGR = etf.priceCAGR
-  if (scenario) {
-    if (scenario.mode === 'pessimistic') normalPriceCAGR = normalPriceCAGR * 0.5
-    else normalPriceCAGR = Math.max(0, normalPriceCAGR + scenario.priceCAGRAdj)
-  }
-  const normalReturn = (normalPriceCAGR + etf.divYield * (1 - 0.154)) / 100
-  const totalAnnualNormal = annualISA + annualPension + annualIRP  // 만원
+  // 일반 계좌 수익률: 납입액 비중 가중평균
+  const nISA     = weightedNormalReturnRate(allocs.isa, scenario)
+  const nPension = weightedNormalReturnRate(allocs.pension, scenario)
+  const nIRP     = weightedNormalReturnRate(allocs.irp, scenario)
+  const totalAnnual = annualISA + annualPension + annualIRP
+  const normalReturn = totalAnnual > 0
+    ? (nISA * annualISA + nPension * annualPension + nIRP * annualIRP) / totalAnnual
+    : nISA
 
   const rows: SimKYearRow[] = []
   let isaBalance = 0
@@ -120,10 +153,10 @@ export function simulateK(params: SimKParams): SimKResult {
     isaCostBasis   += isaContrib
     totalContributed += isaContrib + annualPension * 10000 + irpContrib
 
-    // ── 성장 (과세 이연) ──────────────────────────────────
-    isaBalance     *= (1 + r)
-    pensionBalance *= (1 + r)
-    irpBalance     *= (1 + r)
+    // ── 성장 (과세 이연, 계좌별 수익률 적용) ──────────────
+    isaBalance     *= (1 + rISA)
+    pensionBalance *= (1 + rPension)
+    irpBalance     *= (1 + rIRP)
 
     // ── ISA 3년 만기 해지 ─────────────────────────────────
     let isaTransfer = 0
@@ -154,7 +187,7 @@ export function simulateK(params: SimKParams): SimKResult {
     extraPensionNextYear = (pensionCredited + irpCredited) * taxCreditRate
 
     // ── 일반 계좌 ─────────────────────────────────────────
-    normalBalance += totalAnnualNormal * 10000
+    normalBalance += totalAnnual * 10000
     normalBalance *= (1 + normalReturn)
 
     const totalBalance = isaBalance + pensionBalance + irpBalance
@@ -191,8 +224,6 @@ export function simulateK(params: SimKParams): SimKResult {
   const pTaxRate = pensionTaxRate(retirementAge)
   const annualPensionIncome = finalBalance / 20
   const monthlyPension = (annualPensionIncome * (1 - pTaxRate)) / 12
-
-  // 1200만원 초과 여부는 UI에서 표시
 
   return {
     rows,
