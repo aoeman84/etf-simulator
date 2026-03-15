@@ -53,54 +53,32 @@ export default function TaxPanel({ tax, onChange }: Props) {
             />
             {tax.comprehensiveIncomeTax && (
               <div className="pl-6 space-y-3 border-l-2 border-slate-100 ml-1">
+                {/* 다른 종합소득 슬라이더 */}
                 <div>
                   <div className="flex justify-between mb-1">
-                    <label className="text-xs text-slate-600">다른 금융소득 (이자 등)</label>
+                    <label className="text-xs text-slate-600">다른 종합소득 (근로·사업 등)</label>
                     <span className="text-xs font-semibold text-blue-600">
                       {(tax.otherIncomeKRW / 10000).toLocaleString()}만원/년
                     </span>
                   </div>
-                  <input type="range" min={0} max={30000000} step={500000}
+                  <input type="range" min={0} max={300_000_000} step={1_000_000}
                     value={tax.otherIncomeKRW}
                     onChange={e => set('otherIncomeKRW', Number(e.target.value))}
                     className="w-full accent-blue-600" />
                   <div className="flex justify-between text-xs text-slate-400 mt-0.5">
-                    <span>0원</span><span>3,000만원</span>
+                    <span>0원</span><span>3억원</span>
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="text-xs text-slate-600 leading-tight">
-                      종합소득세 한계세율
-                    </label>
-                    <span className="text-xs font-semibold text-red-600">{tax.marginalRate}%</span>
-                  </div>
-                  {/* 설명 추가 */}
-                  <p className="text-xs text-slate-400 mb-2 leading-relaxed">
-                    배당 <span className="font-medium text-slate-500">외</span> 근로·사업소득 기준으로 선택하세요.
-                    배당 합산 후 구간이 달라질 수 있으니 여유 있게 선택 권장.
-                  </p>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {[15, 24, 35, 38, 40, 42, 45].map(r => (
-                      <button key={r} onClick={() => set('marginalRate', r)}
-                        className={`text-xs py-1.5 rounded-lg border transition-all ${
-                          tax.marginalRate === r
-                            ? 'bg-red-500 text-white border-red-500'
-                            : 'border-slate-200 text-slate-600 hover:border-red-300'
-                        }`}>
-                        {r}%
-                      </button>
-                    ))}
-                  </div>
-                  <div className="text-xs text-slate-400 mt-1.5">
-                    {tax.marginalRate <= 15 && '과세표준 1,400만원 이하'}
-                    {tax.marginalRate === 24 && '과세표준 5,000만원 이하'}
-                    {tax.marginalRate === 35 && '과세표준 8,800만원 이하'}
-                    {tax.marginalRate === 38 && '과세표준 1.5억원 이하'}
-                    {tax.marginalRate === 40 && '과세표준 3억원 이하'}
-                    {tax.marginalRate === 42 && '과세표준 5억원 이하'}
-                    {tax.marginalRate === 45 && '과세표준 5억원 초과'}
+                {/* 자동 누진세 안내 */}
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+                  <div className="text-xs font-semibold text-blue-700 mb-1">📊 세율 자동 계산</div>
+                  <div className="text-xs text-blue-600 leading-relaxed">
+                    배당금 + 다른 종합소득을 합산해<br />
+                    한국 누진세 구간을 자동으로 적용합니다.<br />
+                    <span className="text-blue-400 mt-1 block">
+                      6% → 15% → 24% → 35% → 38% → 40% → 42% → 45%
+                    </span>
                   </div>
                 </div>
               </div>
