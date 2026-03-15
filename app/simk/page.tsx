@@ -540,7 +540,7 @@ function AccountCard({
 
 // ── 작은 입력 컴포넌트들 ─────────────────────────────────────────────────────
 
-function AmountInput({ value, min, max, step, unit, accentClass, onChange }: {
+function AmountInput({ value, min, max, step, unit, accentColor, onChange }: {
   value: number; min: number; max: number; step: number; unit: string
   accentColor: string; onChange: (v: number) => void
 }) {
