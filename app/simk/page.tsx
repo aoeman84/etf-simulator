@@ -162,11 +162,11 @@ export default function SimKPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <AccountInput label="ISA" value={isaAnnual} max={2000} onChange={setIsaAnnual}
+                  <AccountInput label="ISA" value={isaAnnual} max={2000} step={100} onChange={setIsaAnnual}
                     sub="max 2,000만원/년" />
-                  <AccountInput label="연금저축" value={pensionAnnual} max={1500} onChange={setPensionAnnual}
+                  <AccountInput label="연금저축" value={pensionAnnual} max={1500} step={100} onChange={setPensionAnnual}
                     sub="세액공제 600만원까지" />
-                  <AccountInput label="IRP" value={irpAnnual} max={300} onChange={setIrpAnnual}
+                  <AccountInput label="IRP" value={irpAnnual} max={300} step={50} onChange={setIrpAnnual}
                     sub="max 300만원/년" />
                 </div>
               )}
@@ -439,8 +439,8 @@ export default function SimKPage() {
   )
 }
 
-function AccountInput({ label, value, max, onChange, sub }: {
-  label: string; value: number; max: number; onChange: (v: number) => void; sub: string
+function AccountInput({ label, value, max, step = 100, onChange, sub }: {
+  label: string; value: number; max: number; step?: number; onChange: (v: number) => void; sub: string
 }) {
   return (
     <div>
@@ -448,7 +448,7 @@ function AccountInput({ label, value, max, onChange, sub }: {
         <label className="text-sm font-medium text-slate-700">{label}</label>
         <span className="text-sm font-semibold text-blue-600">{value}만원/년</span>
       </div>
-      <input type="range" min={0} max={max} step={12}
+      <input type="range" min={0} max={max} step={step}
         value={value}
         onChange={e => onChange(Number(e.target.value))}
         className="w-full accent-blue-600" />
