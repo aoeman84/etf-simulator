@@ -163,6 +163,11 @@ export function simulateK(params: SimKParams): SimKResult {
 
       isaBalance   = 0
       isaCostBasis = 0
+
+      // 만기 해지 즉시 새 ISA 개설 + 해당 연도 납입
+      // (totalContributed는 루프 상단에서 이미 반영됨)
+      isaBalance   += annualISA * 10000
+      isaCostBasis += annualISA * 10000
     }
 
     const pensionCredited = Math.min(annualPension * 10000, 6_000_000)
