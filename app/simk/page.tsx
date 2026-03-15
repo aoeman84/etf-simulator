@@ -10,7 +10,7 @@ import Footer from '@/components/Footer'
 import ScenarioModal, { ScenarioSettings } from '@/components/ScenarioModal'
 import { fmtKRW, ETF_DATA } from '@/lib/simulator'
 import { usePersistedState } from '@/lib/usePersistedState'
-import { simulateK, SimKYearRow, EtfAlloc, AccountAllocations } from '@/lib/simulatorK'
+import { simulateK, SimKYearRow, EtfAlloc, MonthlyAccount, AnnualAccount } from '@/lib/simulatorK'
 
 const DEFAULT_SCENARIO: ScenarioSettings = {
   mode: 'optimistic',
@@ -21,16 +21,19 @@ const DEFAULT_SCENARIO: ScenarioSettings = {
 
 const SIMK_TICKERS = ['SCHD', 'VOO', 'QQQ']
 
-const DEFAULT_ALLOCATIONS: AccountAllocations = {
-  isa:     SIMK_TICKERS.map((t, i) => ({ ticker: t, pct: i === 0 ? 100 : 0 })),
-  pension: SIMK_TICKERS.map((t, i) => ({ ticker: t, pct: i === 0 ? 100 : 0 })),
-  irp:     SIMK_TICKERS.map((t, i) => ({ ticker: t, pct: i === 0 ? 100 : 0 })),
+const tickerColors: Record<string, string> = {
+  SCHD: '#2563eb',
+  VOO:  '#16a34a',
+  QQQ:  '#9333ea',
 }
 
-function singleTickerAlloc(ticker: string): AccountAllocations {
-  const alloc = SIMK_TICKERS.map(t => ({ ticker: t, pct: t === ticker ? 100 : 0 }))
-  return { isa: alloc, pension: [...alloc], irp: [...alloc] }
+interface AccountState {
+  monthly: number
+  annual: number
+  etfAlloc: EtfAlloc[]
 }
+
+const DEFAULT_ALLOC: EtfAlloc[] = SIMK_TICKERS.map((t, i) => ({ ticker: t, pct: i === 0 ? 100 : 0 }))
 
 function allocSum(allocs: EtfAlloc[]) {
   return allocs.reduce((s, a) => s + a.pct, 0)
@@ -41,63 +44,67 @@ function fmt(n: number) {
   return `${Math.round(n / 1e4)}만`
 }
 
+function buildAcct(state: AccountState, mode: 'monthly' | 'annual'): MonthlyAccount | AnnualAccount {
+  return mode === 'monthly'
+    ? { monthlyWan: state.monthly, etfAlloc: state.etfAlloc }
+    : { annualWan: state.annual, etfAlloc: state.etfAlloc }
+}
+
+function singleEtfAlloc(ticker: string): EtfAlloc[] {
+  return SIMK_TICKERS.map(t => ({ ticker: t, pct: t === ticker ? 100 : 0 }))
+}
+
 export default function SimKPage() {
   const { status } = useSession()
   if (status === 'unauthenticated') redirect('/login')
 
   const [mode, setMode] = usePersistedState<'monthly' | 'annual'>('simk_mode', 'monthly')
-  const [totalMonthly, setTotalMonthly] = usePersistedState<number>('simk_totalMonthly', 100)  // 만원
-  const [isaAnnual, setIsaAnnual] = usePersistedState<number>('simk_isaAnnual', 816)           // 만원
-  const [pensionAnnual, setPensionAnnual] = usePersistedState<number>('simk_pensionAnnual', 240)
-  const [irpAnnual, setIrpAnnual] = usePersistedState<number>('simk_irpAnnual', 144)
-  const [allocations, setAllocations] = usePersistedState<AccountAllocations>('simk_allocations', DEFAULT_ALLOCATIONS)
+  const [isaState, setIsaState] = usePersistedState<AccountState>('simk_isa_v2', {
+    monthly: 166, annual: 2000, etfAlloc: DEFAULT_ALLOC,
+  })
+  const [pensionState, setPensionState] = usePersistedState<AccountState>('simk_pension_v2', {
+    monthly: 50, annual: 240, etfAlloc: DEFAULT_ALLOC,
+  })
+  const [irpState, setIrpState] = usePersistedState<AccountState>('simk_irp_v2', {
+    monthly: 25, annual: 144, etfAlloc: DEFAULT_ALLOC,
+  })
   const [taxCreditRate, setTaxCreditRate] = usePersistedState<number>('simk_taxRate', 0.132)
   const [currentAge, setCurrentAge] = usePersistedState<number>('simk_currentAge', 35)
   const [retirementAge, setRetirementAge] = usePersistedState<number>('simk_retirementAge', 65)
   const [reinvestRefund, setReinvestRefund] = usePersistedState<boolean>('simk_reinvest', false)
   const [scenario, setScenario] = usePersistedState<ScenarioSettings>('simk_scenario', DEFAULT_SCENARIO)
 
-  function updateAlloc(account: keyof AccountAllocations, ticker: string, pct: number) {
-    setAllocations(prev => ({
-      ...prev,
-      [account]: prev[account].map(a => a.ticker === ticker ? { ...a, pct: Math.max(0, Math.min(100, pct)) } : a),
-    }))
-  }
-
-  const isaValid     = allocSum(allocations.isa) === 100
-  const pensionValid = allocSum(allocations.pension) === 100
-  const irpValid     = allocSum(allocations.irp) === 100
+  const isaValid     = allocSum(isaState.etfAlloc) === 100
+  const pensionValid = allocSum(pensionState.etfAlloc) === 100
+  const irpValid     = allocSum(irpState.etfAlloc) === 100
   const allocValid   = isaValid && pensionValid && irpValid
 
   const baseParams = useMemo(() => ({
-    mode,
-    totalMonthlyWan: totalMonthly,
-    isaAnnualWan: isaAnnual,
-    pensionAnnualWan: pensionAnnual,
-    irpAnnualWan: irpAnnual,
-    taxCreditRate,
-    currentAge,
-    retirementAge,
-    reinvestRefund,
-    scenario,
-  }), [mode, totalMonthly, isaAnnual, pensionAnnual, irpAnnual,
-      taxCreditRate, currentAge, retirementAge, reinvestRefund, scenario])
+    mode, taxCreditRate, currentAge, retirementAge, reinvestRefund, scenario,
+  }), [mode, taxCreditRate, currentAge, retirementAge, reinvestRefund, scenario])
 
-  // 내 포트폴리오 시뮬레이션
   const primary = useMemo(() => {
     if (!allocValid) return null
-    return simulateK({ ...baseParams, accountAllocations: allocations })
-  }, [baseParams, allocations, allocValid])
+    return simulateK({
+      ...baseParams,
+      isa:     buildAcct(isaState, mode),
+      pension: buildAcct(pensionState, mode),
+      irp:     buildAcct(irpState, mode),
+    })
+  }, [baseParams, isaState, pensionState, irpState, mode, allocValid])
 
-  // 단일 ETF 100% 비교 시뮬레이션
   const comparisonResults = useMemo(() => {
     return SIMK_TICKERS.map(ticker => ({
       ticker,
-      result: simulateK({ ...baseParams, accountAllocations: singleTickerAlloc(ticker) }),
+      result: simulateK({
+        ...baseParams,
+        isa:     { ...buildAcct(isaState, mode), etfAlloc: singleEtfAlloc(ticker) } as MonthlyAccount | AnnualAccount,
+        pension: { ...buildAcct(pensionState, mode), etfAlloc: singleEtfAlloc(ticker) } as MonthlyAccount | AnnualAccount,
+        irp:     { ...buildAcct(irpState, mode), etfAlloc: singleEtfAlloc(ticker) } as MonthlyAccount | AnnualAccount,
+      }),
     }))
-  }, [baseParams])
+  }, [baseParams, isaState, pensionState, irpState, mode])
 
-  // 차트 데이터
   const chartData = useMemo(() => {
     if (!primary) return []
     return primary.rows.map(row => ({
@@ -107,25 +114,16 @@ export default function SimKPage() {
     }))
   }, [primary])
 
-  // ScenarioModal에 전달할 활성 티커
   const activeTickers = useMemo(() => {
-    const all = [...allocations.isa, ...allocations.pension, ...allocations.irp]
+    const all = [...isaState.etfAlloc, ...pensionState.etfAlloc, ...irpState.etfAlloc]
     return [...new Set(all.filter(a => a.pct > 0).map(a => a.ticker))]
-  }, [allocations])
+  }, [isaState, pensionState, irpState])
 
   const years = Math.max(1, retirementAge - currentAge)
   const pensionWarning = primary ? (primary.finalBalance / 20 / 12) > 12_000_000 : false
 
-  // 연간 납입액 표시
-  const annualISA     = mode === 'monthly' ? Math.min(totalMonthly * 12 * 0.68, 2000) : Math.min(isaAnnual, 2000)
-  const annualPension = mode === 'monthly' ? Math.min(totalMonthly * 12 * 0.20, 1500) : Math.min(pensionAnnual, 1500)
-  const annualIRP     = mode === 'monthly' ? Math.min(totalMonthly * 12 * 0.12, 300)  : Math.min(irpAnnual, 300)
-
-  const tickerColors: Record<string, string> = {
-    SCHD: '#2563eb',
-    VOO:  '#16a34a',
-    QQQ:  '#9333ea',
-  }
+  const totalMonthly = isaState.monthly + pensionState.monthly + irpState.monthly
+  const totalAnnual  = isaState.annual + pensionState.annual + irpState.annual
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -143,165 +141,91 @@ export default function SimKPage() {
           <div className="space-y-4">
 
             {/* 납입 방식 */}
-            <div className="card p-5 space-y-4">
-              <div>
-                <label className="text-sm font-semibold text-slate-700 block mb-2">납입 방식</label>
-                <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
-                  {(['monthly', 'annual'] as const).map(m => (
-                    <button key={m}
-                      onClick={() => setMode(m)}
-                      className={`flex-1 text-xs py-2 px-2 rounded-lg font-medium transition-all ${
-                        mode === m ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'
-                      }`}>
-                      {m === 'monthly' ? '월 적립' : '연초 일시납'}
-                    </button>
-                  ))}
-                </div>
+            <div className="card p-4">
+              <label className="text-sm font-semibold text-slate-700 block mb-2">납입 방식</label>
+              <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+                {(['monthly', 'annual'] as const).map(m => (
+                  <button key={m}
+                    onClick={() => setMode(m)}
+                    className={`flex-1 text-xs py-2 px-2 rounded-lg font-medium transition-all ${
+                      mode === m ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'
+                    }`}>
+                    {m === 'monthly' ? '월 적립' : '연초 일시납'}
+                  </button>
+                ))}
               </div>
-
-              {/* 납입 금액 */}
-              {mode === 'monthly' ? (
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <label className="text-sm font-medium text-slate-700">총 월 납입액</label>
-                    <span className="text-sm font-semibold text-blue-600">{totalMonthly}만원/월</span>
-                  </div>
-                  <input type="range" min={10} max={245} step={5}
-                    value={totalMonthly}
-                    onChange={e => setTotalMonthly(Number(e.target.value))}
-                    className="w-full accent-blue-600" />
-                  <div className="mt-2 text-xs text-slate-500 space-y-0.5 bg-slate-50 rounded-xl p-3">
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">ISA (68%)</span>
-                      <span>{Math.round(annualISA)}만원/년</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">연금저축 (20%)</span>
-                      <span>{Math.round(annualPension)}만원/년</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-400">IRP (12%)</span>
-                      <span>{Math.round(annualIRP)}만원/년</span>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <AccountInput label="ISA" value={isaAnnual} max={2000} step={100} onChange={setIsaAnnual}
-                    sub="max 2,000만원/년" />
-                  <AccountInput label="연금저축" value={pensionAnnual} max={1500} step={100} onChange={setPensionAnnual}
-                    sub="세액공제 600만원까지" />
-                  <AccountInput label="IRP" value={irpAnnual} max={300} step={50} onChange={setIrpAnnual}
-                    sub="max 300만원/년" />
-                </div>
-              )}
-
-              {/* 세액공제율 */}
-              <div>
-                <label className="text-sm font-medium text-slate-700 block mb-2">세액공제율</label>
-                <div className="flex gap-2">
-                  {[
-                    { rate: 0.132, label: '13.2%', sub: '총급여 5,500만원 초과' },
-                    { rate: 0.165, label: '16.5%', sub: '총급여 5,500만원 이하' },
-                  ].map(({ rate, label, sub }) => (
-                    <button key={rate}
-                      onClick={() => setTaxCreditRate(rate)}
-                      className={`flex-1 text-left p-2.5 rounded-xl border transition-all text-xs ${
-                        taxCreditRate === rate
-                          ? 'border-blue-400 bg-blue-50 text-blue-700'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                      }`}>
-                      <div className="font-semibold">{label}</div>
-                      <div className="text-slate-400 mt-0.5 leading-tight">{sub}</div>
-                    </button>
-                  ))}
-                </div>
+              <div className="mt-3 text-xs text-slate-500 bg-slate-50 rounded-xl px-3 py-2 flex justify-between">
+                <span className="text-slate-400">총 {mode === 'monthly' ? '월' : '연간'} 납입액</span>
+                <span className="font-semibold text-slate-700">
+                  {mode === 'monthly' ? `${totalMonthly}만원/월` : `${totalAnnual}만원/년`}
+                </span>
               </div>
+            </div>
 
-              {/* 나이 슬라이더 */}
-              <div className="space-y-3">
-                <SliderRow label="현재 나이" value={currentAge} min={20} max={60} step={1}
-                  display={`${currentAge}세`} onChange={setCurrentAge} />
-                <SliderRow label="연금 수령 나이" value={retirementAge} min={55} max={80} step={1}
-                  display={`${retirementAge}세`} onChange={setRetirementAge} />
-                <div className="text-xs text-slate-400 text-center">
-                  납입 기간: <span className="font-semibold text-slate-600">{years}년</span>
-                </div>
+            {/* 계좌별 카드 */}
+            <AccountCard
+              label="ISA" color="blue"
+              state={isaState} setState={setIsaState}
+              mode={mode}
+              monthlyMax={166} monthlyStep={1}
+              annualMax={2000} annualStep={100}
+              sub="연 2,000만원 한도 · 3년 의무보유 · 비과세 200만원"
+            />
+            <AccountCard
+              label="연금저축" color="green"
+              state={pensionState} setState={setPensionState}
+              mode={mode}
+              monthlyMax={125} monthlyStep={1}
+              annualMax={1500} annualStep={100}
+              sub="연 1,500만원 한도 · 세액공제 600만원 기준"
+            />
+            <AccountCard
+              label="IRP" color="purple"
+              state={irpState} setState={setIrpState}
+              mode={mode}
+              monthlyMax={25} monthlyStep={1}
+              annualMax={300} annualStep={50}
+              sub="연 300만원 한도 · 연금저축+합산 900만원 세액공제"
+            />
+
+            {/* 세액공제율 */}
+            <div className="card p-4">
+              <label className="text-sm font-medium text-slate-700 block mb-2">세액공제율</label>
+              <div className="flex gap-2">
+                {[
+                  { rate: 0.132, label: '13.2%', sub: '총급여 5,500만원 초과' },
+                  { rate: 0.165, label: '16.5%', sub: '총급여 5,500만원 이하' },
+                ].map(({ rate, label, sub }) => (
+                  <button key={rate}
+                    onClick={() => setTaxCreditRate(rate)}
+                    className={`flex-1 text-left p-2.5 rounded-xl border transition-all text-xs ${
+                      taxCreditRate === rate
+                        ? 'border-blue-400 bg-blue-50 text-blue-700'
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    }`}>
+                    <div className="font-semibold">{label}</div>
+                    <div className="text-slate-400 mt-0.5 leading-tight">{sub}</div>
+                  </button>
+                ))}
               </div>
+            </div>
 
-              {/* 세액공제 환급금 재투자 */}
-              <div className="flex items-center gap-3">
+            {/* 나이 슬라이더 */}
+            <div className="card p-4 space-y-3">
+              <SliderRow label="현재 나이" value={currentAge} min={20} max={60} step={1}
+                display={`${currentAge}세`} onChange={setCurrentAge} />
+              <SliderRow label="연금 수령 나이" value={retirementAge} min={55} max={80} step={1}
+                display={`${retirementAge}세`} onChange={setRetirementAge} />
+              <div className="text-xs text-slate-400 text-center">
+                납입 기간: <span className="font-semibold text-slate-600">{years}년</span>
+              </div>
+              <div className="flex items-center gap-3 pt-1">
                 <input type="checkbox" id="reinvest" checked={reinvestRefund}
                   onChange={e => setReinvestRefund(e.target.checked)}
                   className="w-4 h-4 accent-blue-600" />
                 <label htmlFor="reinvest" className="text-sm cursor-pointer select-none">
                   세액공제 환급금 연금저축에 재투자
                 </label>
-              </div>
-            </div>
-
-            {/* 계좌별 ETF 배분 */}
-            <div className="card p-4 space-y-4">
-              <div className="text-sm font-semibold text-slate-700">계좌별 ETF 배분</div>
-              {(
-                [
-                  { key: 'isa' as const,     label: 'ISA',     color: 'text-blue-600',   valid: isaValid },
-                  { key: 'pension' as const, label: '연금저축', color: 'text-green-600',  valid: pensionValid },
-                  { key: 'irp' as const,     label: 'IRP',     color: 'text-purple-600', valid: irpValid },
-                ]
-              ).map(({ key, label, color, valid }) => {
-                const sum = allocSum(allocations[key])
-                return (
-                  <div key={key}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`text-xs font-semibold ${color}`}>{label}</span>
-                      <span className={`text-xs font-medium ${valid ? 'text-green-600' : 'text-red-500'}`}>
-                        합계: {sum}% {valid ? '✓' : '⚠'}
-                      </span>
-                    </div>
-                    <div className="space-y-1.5">
-                      {allocations[key].map(({ ticker, pct }) => (
-                        <div key={ticker} className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ background: tickerColors[ticker] }} />
-                          <span className="text-xs font-medium text-slate-600 w-10 flex-shrink-0">{ticker}</span>
-                          <input
-                            type="range" min={0} max={100} step={5}
-                            value={pct}
-                            onChange={e => updateAlloc(key, ticker, Number(e.target.value))}
-                            className="flex-1 accent-blue-600"
-                            style={{ accentColor: tickerColors[ticker] }}
-                          />
-                          <span className="text-xs font-semibold text-slate-700 w-9 text-right">{pct}%</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-              {!allocValid && (
-                <div className="text-xs text-red-500 bg-red-50 rounded-lg px-3 py-2">
-                  각 계좌의 ETF 비율 합계가 100%가 되어야 합니다.
-                </div>
-              )}
-            </div>
-
-            {/* 계좌 한도 안내 */}
-            <div className="card p-4">
-              <div className="text-xs font-semibold text-slate-600 mb-3">계좌별 규칙 요약</div>
-              <div className="space-y-2 text-xs text-slate-500">
-                <div className="flex gap-2">
-                  <span className="w-20 font-semibold text-blue-600 flex-shrink-0">ISA</span>
-                  <span>연 2,000만원 · 3년 의무보유 · 비과세 200만원 · 초과 9.9% · 만기시 연금저축 이체</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="w-20 font-semibold text-green-600 flex-shrink-0">연금저축</span>
-                  <span>연 1,500만원 · 세액공제 600만원 기준 · 수령시 연금소득세</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="w-20 font-semibold text-purple-600 flex-shrink-0">IRP</span>
-                  <span>연 300만원 · 연금저축+합산 900만원까지 세액공제 · 수령시 연금소득세</span>
-                </div>
               </div>
             </div>
           </div>
@@ -358,18 +282,19 @@ export default function SimKPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {/* 내 포트폴리오 */}
                     <tr className="bg-blue-50">
                       <td className="px-4 py-3">
                         <div className="font-semibold text-blue-700">내 포트폴리오</div>
                         <div className="text-slate-400 mt-0.5 leading-tight">
-                          {['isa', 'pension', 'irp'].map((acct) => {
-                            const alloc = allocations[acct as keyof AccountAllocations]
-                            const active = alloc.filter(a => a.pct > 0)
+                          {[
+                            { key: 'isa' as const, label: 'ISA', state: isaState },
+                            { key: 'pension' as const, label: '연금', state: pensionState },
+                            { key: 'irp' as const, label: 'IRP', state: irpState },
+                          ].map(({ label, state }) => {
+                            const active = state.etfAlloc.filter(a => a.pct > 0)
                             if (active.length === 0) return null
-                            const label = acct === 'isa' ? 'ISA' : acct === 'pension' ? '연금' : 'IRP'
                             return (
-                              <span key={acct} className="mr-2">
+                              <span key={label} className="mr-2">
                                 {label}: {active.map(a => `${a.ticker} ${a.pct}%`).join('+')}
                               </span>
                             )
@@ -390,7 +315,6 @@ export default function SimKPage() {
                           : '-'}
                       </td>
                     </tr>
-                    {/* 단일 ETF 100% 비교 */}
                     {comparisonResults.map(({ ticker, result }) => (
                       <tr key={ticker} className="hover:bg-slate-50">
                         <td className="px-4 py-3">
@@ -439,10 +363,8 @@ export default function SimKPage() {
                     contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                  <Line type="monotone" dataKey="내 포트폴리오"
-                    stroke="#2563eb" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="일반 계좌"
-                    stroke="#94a3b8" strokeWidth={1.5} dot={false} strokeDasharray="5 3" />
+                  <Line type="monotone" dataKey="내 포트폴리오" stroke="#2563eb" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="일반 계좌" stroke="#94a3b8" strokeWidth={1.5} dot={false} strokeDasharray="5 3" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -474,21 +396,11 @@ export default function SimKPage() {
                             <span className="text-slate-400 ml-1">({row.age}세)</span>
                             {row.isaTransfer > 0 && <span className="ml-1 text-blue-500 font-bold">↗ ISA 만기</span>}
                           </td>
-                          <td className="px-3 py-2.5 text-right text-blue-600 whitespace-nowrap">
-                            {fmtKRW(row.isaBalance)}
-                          </td>
-                          <td className="px-3 py-2.5 text-right text-green-600 whitespace-nowrap">
-                            {fmtKRW(row.pensionBalance)}
-                          </td>
-                          <td className="px-3 py-2.5 text-right text-purple-600 whitespace-nowrap">
-                            {fmtKRW(row.irpBalance)}
-                          </td>
-                          <td className="px-3 py-2.5 text-right text-amber-600 font-medium whitespace-nowrap">
-                            +{fmtKRW(row.taxCreditThisYear)}
-                          </td>
-                          <td className="px-3 py-2.5 text-right font-semibold text-slate-700 whitespace-nowrap">
-                            {fmtKRW(row.cumulativeTaxCredit)}
-                          </td>
+                          <td className="px-3 py-2.5 text-right text-blue-600 whitespace-nowrap">{fmtKRW(row.isaBalance)}</td>
+                          <td className="px-3 py-2.5 text-right text-green-600 whitespace-nowrap">{fmtKRW(row.pensionBalance)}</td>
+                          <td className="px-3 py-2.5 text-right text-purple-600 whitespace-nowrap">{fmtKRW(row.irpBalance)}</td>
+                          <td className="px-3 py-2.5 text-right text-amber-600 font-medium whitespace-nowrap">+{fmtKRW(row.taxCreditThisYear)}</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtKRW(row.cumulativeTaxCredit)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -507,20 +419,166 @@ export default function SimKPage() {
   )
 }
 
-function AccountInput({ label, value, max, step = 100, onChange, sub }: {
-  label: string; value: number; max: number; step?: number; onChange: (v: number) => void; sub: string
-}) {
+// ── AccountCard ─────────────────────────────────────────────────────────────
+
+interface AccountCardProps {
+  label: string
+  color: 'blue' | 'green' | 'purple'
+  state: AccountState
+  setState: (s: AccountState | ((prev: AccountState) => AccountState)) => void
+  mode: 'monthly' | 'annual'
+  monthlyMax: number
+  monthlyStep: number
+  annualMax: number
+  annualStep: number
+  sub: string
+}
+
+function AccountCard({
+  label, color, state, setState, mode,
+  monthlyMax, monthlyStep, annualMax, annualStep, sub,
+}: AccountCardProps) {
+  const [expanded, setExpanded] = useState(true)
+
+  const colorMap = { blue: 'text-blue-600', green: 'text-green-600', purple: 'text-purple-600' }
+  const accentMap = { blue: '#2563eb', green: '#16a34a', purple: '#9333ea' }
+
+  const sum = allocSum(state.etfAlloc)
+  const valid = sum === 100
+
+  function setAmount(v: number) {
+    setState(prev => ({
+      ...prev,
+      [mode === 'monthly' ? 'monthly' : 'annual']: v,
+    }))
+  }
+
+  function setAllocPct(ticker: string, pct: number) {
+    setState(prev => ({
+      ...prev,
+      etfAlloc: prev.etfAlloc.map(a => a.ticker === ticker ? { ...a, pct: Math.max(0, Math.min(100, pct)) } : a),
+    }))
+  }
+
+  const amount = mode === 'monthly' ? state.monthly : state.annual
+  const max    = mode === 'monthly' ? monthlyMax : annualMax
+  const step   = mode === 'monthly' ? monthlyStep : annualStep
+  const unit   = mode === 'monthly' ? '만원/월' : '만원/년'
+
   return (
-    <div>
-      <div className="flex justify-between mb-1">
-        <label className="text-sm font-medium text-slate-700">{label}</label>
-        <span className="text-sm font-semibold text-blue-600">{value}만원/년</span>
+    <div className="card p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className={`text-sm font-semibold ${colorMap[color]}`}>{label}</span>
+        <span className="text-xs text-slate-400">max {mode === 'monthly' ? `${monthlyMax}만원/월` : `${annualMax}만원/년`}</span>
       </div>
-      <input type="range" min={0} max={max} step={step}
-        value={value}
+
+      {/* 납입액 슬라이더 + 직접입력 */}
+      <AmountInput
+        value={amount} min={0} max={max} step={step} unit={unit}
+        accentColor={accentMap[color]}
+        onChange={setAmount}
+      />
+      <div className="text-xs text-slate-400">{sub}</div>
+
+      {/* ETF 배분 토글 */}
+      <div>
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors"
+        >
+          <span>ETF 배분</span>
+          <span className="text-slate-400">{expanded ? '▲' : '▼'}</span>
+          <span className={`ml-2 font-semibold ${valid ? 'text-green-600' : 'text-red-500'}`}>
+            {sum}% {valid ? '✓' : '⚠'}
+          </span>
+        </button>
+
+        {expanded && (
+          <div className="mt-2 space-y-1.5">
+            {state.etfAlloc.map(({ ticker, pct }) => (
+              <div key={ticker} className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tickerColors[ticker] }} />
+                <span className="text-xs font-medium text-slate-600 w-10 flex-shrink-0">{ticker}</span>
+                <input
+                  type="range" min={0} max={100} step={5} value={pct}
+                  onChange={e => setAllocPct(ticker, Number(e.target.value))}
+                  className="flex-1"
+                  style={{ accentColor: tickerColors[ticker] }}
+                />
+                <PctInput value={pct} onChange={v => setAllocPct(ticker, v)} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── 작은 입력 컴포넌트들 ─────────────────────────────────────────────────────
+
+function AmountInput({ value, min, max, step, unit, accentColor, onChange }: {
+  value: number; min: number; max: number; step: number; unit: string
+  accentColor: string; onChange: (v: number) => void
+}) {
+  const [inputVal, setInputVal] = useState(String(value))
+  // sync when parent changes
+  useMemo(() => setInputVal(String(value)), [value])
+
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
-        className="w-full accent-blue-600" />
-      <div className="text-xs text-slate-400 mt-0.5">{sub}</div>
+        className="flex-1"
+        style={{ accentColor }}
+      />
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <input
+          type="number" min={min} max={max} step={step} value={inputVal}
+          onChange={e => {
+            setInputVal(e.target.value)
+            const n = parseInt(e.target.value, 10)
+            if (!isNaN(n) && n >= min && n <= max) onChange(n)
+          }}
+          onBlur={() => {
+            const n = parseInt(inputVal, 10)
+            const c = isNaN(n) ? min : Math.min(max, Math.max(min, n))
+            setInputVal(String(c))
+            onChange(c)
+          }}
+          className="w-16 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
+          inputMode="numeric"
+        />
+        <span className="text-xs text-slate-500">{unit}</span>
+      </div>
+    </div>
+  )
+}
+
+function PctInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [inputVal, setInputVal] = useState(String(value))
+  useMemo(() => setInputVal(String(value)), [value])
+
+  return (
+    <div className="flex items-center gap-0.5 flex-shrink-0">
+      <input
+        type="number" min={0} max={100} step={5} value={inputVal}
+        onChange={e => {
+          setInputVal(e.target.value)
+          const n = parseInt(e.target.value, 10)
+          if (!isNaN(n) && n >= 0 && n <= 100) onChange(n)
+        }}
+        onBlur={() => {
+          const n = parseInt(inputVal, 10)
+          const c = isNaN(n) ? 0 : Math.min(100, Math.max(0, n))
+          setInputVal(String(c))
+          onChange(c)
+        }}
+        className="w-12 text-right border border-slate-200 rounded-lg px-1.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-blue-400"
+        inputMode="numeric"
+      />
+      <span className="text-xs text-slate-400">%</span>
     </div>
   )
 }
@@ -535,8 +593,7 @@ function SliderRow({ label, value, min, max, step, display, onChange }: {
         <label className="text-sm font-medium text-slate-700">{label}</label>
         <span className="text-sm font-semibold text-blue-600">{display}</span>
       </div>
-      <input type="range" min={min} max={max} step={step}
-        value={value}
+      <input type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
         className="w-full accent-blue-600" />
     </div>
