@@ -8,7 +8,6 @@ interface Props {
   onChange: (t: TaxSettings) => void
 }
 
-// 슬라이더 0 → 0원 / 50 → 8,800만원 / 100 → 12억
 const ANCHOR_MID = 88_000_000
 const ANCHOR_MAX = 1_200_000_000
 const MIN_INCOME = 1_000_000
@@ -26,7 +25,7 @@ function sliderToIncome(v: number): number {
 
 function incomeToSlider(income: number): number {
   if (income <= 0) return 0
-  if (income >= ANCHOR_MAX) return 100 // 12억 초과도 슬라이더는 100 고정
+  if (income >= ANCHOR_MAX) return 100
   if (income <= ANCHOR_MID) {
     if (income < MIN_INCOME) return 0
     return Math.round(Math.log(income / MIN_INCOME) / Math.log(ANCHOR_MID / MIN_INCOME) * 50)
@@ -43,6 +42,17 @@ function fmtIncome(v: number): string {
   return `${man}만원`
 }
 
+// ✅ 숫자를 세 자리 쉼표 문자열로 변환 (7300 → "7,300")
+function fmtWithComma(n: number): string {
+  if (isNaN(n) || n === 0) return '0'
+  return n.toLocaleString('ko-KR')
+}
+
+// ✅ 쉼표 포함 문자열에서 숫자 파싱
+function parseComma(s: string): number {
+  return parseInt(s.replace(/,/g, ''), 10)
+}
+
 function getBracket(income: number): { rate: string; color: string } {
   if (income <= 0)               return { rate: '-',   color: 'bg-slate-100 text-slate-400' }
   if (income <= 14_000_000)     return { rate: '6%',  color: 'bg-slate-100 text-slate-500' }
@@ -55,7 +65,6 @@ function getBracket(income: number): { rate: string; color: string } {
   return { rate: '45%', color: 'bg-red-200 text-red-700' }
 }
 
-// 눈금 (슬라이더 위치값 사전 계산)
 const TICKS = [
   { label: '0',      pos: 0   },
   { label: '1,400만', pos: 29  },
@@ -76,30 +85,34 @@ export default function TaxPanel({ tax, onChange }: Props) {
   const sliderVal = incomeToSlider(otherIncome)
   const { rate, color } = getBracket(otherIncome)
 
-  // 만원 단위 직접 입력 상태
-  // ✅ 12억 초과 입력도 허용 (max 없음)
-  const [inputMan, setInputMan] = useState(String(Math.round(otherIncome / 10000)))
+  // ✅ 입력 표시값 — 쉼표 포함 문자열로 관리
+  const [inputDisplay, setInputDisplay] = useState(fmtWithComma(Math.round(otherIncome / 10000)))
 
   useEffect(() => {
-    setInputMan(String(Math.round(otherIncome / 10000)))
+    setInputDisplay(fmtWithComma(Math.round(otherIncome / 10000)))
   }, [otherIncome])
 
   function handleInputChange(raw: string) {
-    setInputMan(raw)
-    const n = parseInt(raw.replace(/,/g, ''), 10)
-    if (!isNaN(n) && n >= 0) {
+    // 숫자와 쉼표만 허용
+    const digitsOnly = raw.replace(/[^0-9]/g, '')
+    const n = parseInt(digitsOnly, 10)
+    if (digitsOnly === '') {
+      setInputDisplay('')
+      set('otherIncomeKRW', 0)
+    } else if (!isNaN(n)) {
+      // 입력 중에는 쉼표 표시
+      setInputDisplay(n.toLocaleString('ko-KR'))
       set('otherIncomeKRW', n * 10000)
     }
   }
 
   function handleInputBlur() {
-    const n = parseInt(inputMan.replace(/,/g, ''), 10)
+    const n = parseComma(inputDisplay)
     const val = isNaN(n) || n < 0 ? 0 : n
-    setInputMan(String(val))
+    setInputDisplay(fmtWithComma(val))
     set('otherIncomeKRW', val * 10000)
   }
 
-  // 현재 슬라이더 위치에서 가장 가까운 눈금
   const nearestTickIdx = TICKS.reduce((best, tick, i) => {
     return Math.abs(sliderVal - tick.pos) < Math.abs(sliderVal - TICKS[best].pos) ? i : best
   }, 0)
@@ -134,7 +147,7 @@ export default function TaxPanel({ tax, onChange }: Props) {
             {tax.comprehensiveIncomeTax && (
               <div className="pl-6 space-y-4 border-l-2 border-slate-100 ml-1">
 
-                {/* 다른 금융소득 — max 2,000만원 */}
+                {/* 다른 금융소득 */}
                 <div>
                   <div className="flex justify-between mb-1">
                     <label className="text-xs text-slate-600">다른 금융소득 <span className="text-slate-400">(이자·기타 배당)</span></label>
@@ -152,7 +165,7 @@ export default function TaxPanel({ tax, onChange }: Props) {
                   <p className="text-xs text-slate-400 mt-1">배당 + 이자 합산 2,000만원 초과 시 종합과세 대상</p>
                 </div>
 
-                {/* 다른 종합소득 — 로그 슬라이더 + 만원 직접 입력 */}
+                {/* 다른 종합소득 */}
                 <div>
                   <div className="flex justify-between mb-1">
                     <label className="text-xs text-slate-600">다른 종합소득 <span className="text-slate-400">(근로·사업소득)</span></label>
@@ -163,25 +176,21 @@ export default function TaxPanel({ tax, onChange }: Props) {
                     </div>
                   </div>
 
-                  {/* ✅ 만원 단위 직접 입력 — 12억 초과도 허용 */}
+                  {/* ✅ 만원 단위 입력 — 쉼표 자동 표시, 12억 초과 허용 */}
                   <div className="flex items-center gap-2 mb-2">
                     <input
-                      type="number"
-                      min={0}
-                      value={inputMan}
+                      type="text"
+                      inputMode="numeric"
+                      value={inputDisplay}
                       onChange={e => handleInputChange(e.target.value)}
                       onBlur={handleInputBlur}
-                      className="w-28 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-orange-600 outline-none focus:ring-2 focus:ring-orange-400"
-                      inputMode="numeric"
                       placeholder="0"
+                      className="w-28 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-orange-600 outline-none focus:ring-2 focus:ring-orange-400"
                     />
                     <span className="text-xs text-slate-500">만원/년</span>
-                    <span className="text-xs text-slate-400 ml-auto">
-                      = {fmtIncome(otherIncome)}
-                    </span>
+                    <span className="text-xs text-slate-400 ml-auto">= {fmtIncome(otherIncome)}</span>
                   </div>
 
-                  {/* 로그 슬라이더 (12억 이상이면 100 고정) */}
                   <input type="range" min={0} max={100} step={1}
                     value={sliderVal}
                     onChange={e => set('otherIncomeKRW', sliderToIncome(Number(e.target.value)))}
@@ -202,10 +211,7 @@ export default function TaxPanel({ tax, onChange }: Props) {
                       </div>
                     ))}
                   </div>
-
-                  <p className="text-xs text-slate-400 mt-1.5">
-                    슬라이더 중간 = 8,800만원 · 직접 입력 시 12억 초과 가능
-                  </p>
+                  {/* ✅ 문구 제거 */}
                 </div>
 
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
