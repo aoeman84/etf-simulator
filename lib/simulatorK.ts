@@ -130,16 +130,20 @@ export function simulateK(params: SimKParams): SimKResult {
 
   for (let y = 1; y <= years; y++) {
     const age = currentAge + y
+    const isMatureYear = y % 3 === 0
 
     const isaContrib     = annualISA * 10000
     const pensionExtra   = reinvestRefund ? extraPensionNextYear : 0
     const pensionContrib = annualPension * 10000 + pensionExtra
     const irpContrib     = annualIRP * 10000
 
-    isaBalance     += isaContrib
-    pensionBalance += pensionContrib
-    irpBalance     += irpContrib
-    isaCostBasis   += isaContrib
+    // ISA 납입: 만기 해지 연도에는 루프 상단에서 건너뜀 (만기 처리 후 새 ISA에 납입)
+    if (!isMatureYear) {
+      isaBalance   += isaContrib
+      isaCostBasis += isaContrib
+    }
+    pensionBalance   += pensionContrib
+    irpBalance       += irpContrib
     totalContributed += isaContrib + annualPension * 10000 + irpContrib
 
     isaBalance     *= (1 + rISA)
@@ -148,7 +152,7 @@ export function simulateK(params: SimKParams): SimKResult {
 
     let isaTransfer = 0
     let isaTransferCredit = 0
-    if (y % 3 === 0) {
+    if (isMatureYear) {
       const isaGain     = Math.max(0, isaBalance - isaCostBasis)
       const taxFreeGain = Math.min(isaGain, 2_000_000)
       const taxableGain = Math.max(0, isaGain - taxFreeGain)
@@ -158,16 +162,15 @@ export function simulateK(params: SimKParams): SimKResult {
       isaTransfer       = isaAfterTax
       isaTransferCredit = Math.min(isaAfterTax * 0.1, 3_000_000)
 
-      pensionBalance    += isaAfterTax
+      pensionBalance      += isaAfterTax
       cumulativeTaxCredit += isaTransferCredit
 
       isaBalance   = 0
       isaCostBasis = 0
 
-      // 만기 해지 즉시 새 ISA 개설 + 해당 연도 납입
-      // (totalContributed는 루프 상단에서 이미 반영됨)
-      isaBalance   += annualISA * 10000
-      isaCostBasis += annualISA * 10000
+      // 만기 즉시 새 ISA 개설 + 해당 연도 납입
+      isaBalance   += isaContrib
+      isaCostBasis += isaContrib
     }
 
     const pensionCredited = Math.min(annualPension * 10000, 6_000_000)

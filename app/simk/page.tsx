@@ -173,25 +173,25 @@ export default function SimKPage() {
               label="ISA" color="blue"
               state={isaState} setState={setIsaState}
               mode={mode}
-              monthlyMax={166} monthlyStep={1}
-              annualMax={2000} annualStep={100}
-              sub="연 2,000만원 한도 · 3년 의무보유 · 비과세 200만원"
+              monthlyStep={1} annualStep={100}
+              annualLimit={2000}
+              sub="3년 의무보유 · 비과세 200만원"
             />
             <AccountCard
               label="연금저축" color="green"
               state={pensionState} setState={setPensionState}
               mode={mode}
-              monthlyMax={125} monthlyStep={1}
-              annualMax={1500} annualStep={100}
-              sub="연 1,500만원 한도 · 세액공제 600만원 기준"
+              monthlyStep={1} annualStep={100}
+              annualLimit={1500}
+              sub="세액공제 최대 600만원 · 연금저축 600만+IRP 300만 최적"
             />
             <AccountCard
               label="IRP" color="purple"
               state={irpState} setState={setIrpState}
               mode={mode}
-              monthlyMax={25} monthlyStep={1}
-              annualMax={300} annualStep={50}
-              sub="연 300만원 한도 · 연금저축+합산 900만원 세액공제"
+              monthlyStep={1} annualStep={50}
+              annualLimit={300}
+              sub="연금저축+합산 900만원까지 세액공제"
             />
 
             {/* 세액공제율 */}
@@ -433,16 +433,15 @@ interface AccountCardProps {
   state: AccountState
   setState: (s: AccountState | ((prev: AccountState) => AccountState)) => void
   mode: 'monthly' | 'annual'
-  monthlyMax: number
   monthlyStep: number
-  annualMax: number
   annualStep: number
+  annualLimit: number   // 세제혜택 한도 (만원) — 초과 시 경고
   sub: string
 }
 
 function AccountCard({
   label, color, state, setState, mode,
-  monthlyMax, monthlyStep, annualMax, annualStep, sub,
+  monthlyStep, annualStep, annualLimit, sub,
 }: AccountCardProps) {
   const [expanded, setExpanded] = useState(true)
 
@@ -466,25 +465,33 @@ function AccountCard({
     }))
   }
 
-  const amount = mode === 'monthly' ? state.monthly : state.annual
-  const max    = mode === 'monthly' ? monthlyMax : annualMax
-  const step   = mode === 'monthly' ? monthlyStep : annualStep
-  const unit   = mode === 'monthly' ? '만원/월' : '만원/년'
+  const amount     = mode === 'monthly' ? state.monthly : state.annual
+  const sliderMax  = mode === 'monthly' ? Math.ceil(annualLimit / 6) : Math.ceil(annualLimit * 1.5)
+  const step       = mode === 'monthly' ? monthlyStep : annualStep
+  const unit       = mode === 'monthly' ? '만원/월' : '만원/년'
+  const annualAmt  = mode === 'monthly' ? state.monthly * 12 : state.annual
+  const overLimit  = annualAmt > annualLimit
+  const warnText   = overLimit
+    ? `⚠️ 연간 ${annualAmt.toLocaleString()}만원 — 한도(${annualLimit.toLocaleString()}만원) 초과, 초과분 세제혜택 없음`
+    : null
 
   return (
     <div className="card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className={`text-sm font-semibold ${colorMap[color]}`}>{label}</span>
-        <span className="text-xs text-slate-400">max {mode === 'monthly' ? `${monthlyMax}만원/월` : `${annualMax}만원/년`}</span>
+        <span className="text-xs text-slate-400">세제혜택 한도 {annualLimit.toLocaleString()}만원/년</span>
       </div>
 
       {/* 납입액 슬라이더 + 직접입력 */}
       <AmountInput
-        value={amount} min={0} max={max} step={step} unit={unit}
+        value={amount} min={0} sliderMax={sliderMax} step={step} unit={unit}
         accentColor={accentMap[color]}
         onChange={setAmount}
       />
-      <div className="text-xs text-slate-400">{sub}</div>
+      {warnText
+        ? <div className="text-xs text-orange-500">{warnText}</div>
+        : <div className="text-xs text-slate-400">{sub}</div>
+      }
 
       {/* ETF 배분 토글 */}
       <div>
@@ -522,33 +529,35 @@ function AccountCard({
 
 // ── 작은 입력 컴포넌트들 ─────────────────────────────────────────────────────
 
-function AmountInput({ value, min, max, step, unit, accentColor, onChange }: {
-  value: number; min: number; max: number; step: number; unit: string
+function AmountInput({ value, min, sliderMax, step, unit, accentColor, onChange }: {
+  value: number; min: number; sliderMax: number; step: number; unit: string
   accentColor: string; onChange: (v: number) => void
 }) {
   const [inputVal, setInputVal] = useState(String(value))
-  // sync when parent changes
   useMemo(() => setInputVal(String(value)), [value])
+
+  // 슬라이더는 sliderMax까지, 숫자 직접입력은 상한 없음 (경고로 처리)
+  const sliderValue = Math.min(value, sliderMax)
 
   return (
     <div className="flex items-center gap-2">
       <input
-        type="range" min={min} max={max} step={step} value={value}
+        type="range" min={min} max={sliderMax} step={step} value={sliderValue}
         onChange={e => onChange(Number(e.target.value))}
         className="flex-1"
         style={{ accentColor }}
       />
       <div className="flex items-center gap-1 flex-shrink-0">
         <input
-          type="number" min={min} max={max} step={step} value={inputVal}
+          type="number" min={min} step={step} value={inputVal}
           onChange={e => {
             setInputVal(e.target.value)
             const n = parseInt(e.target.value, 10)
-            if (!isNaN(n) && n >= min && n <= max) onChange(n)
+            if (!isNaN(n) && n >= min) onChange(n)
           }}
           onBlur={() => {
             const n = parseInt(inputVal, 10)
-            const c = isNaN(n) ? min : Math.min(max, Math.max(min, n))
+            const c = isNaN(n) || n < min ? min : n
             setInputVal(String(c))
             onChange(c)
           }}
