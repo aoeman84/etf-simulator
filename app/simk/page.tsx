@@ -465,7 +465,7 @@ function AccountCard({
   const [expanded, setExpanded] = useState(true)
 
   const colorMap      = { blue: 'text-blue-600',    green: 'text-green-600',    purple: 'text-purple-600'    }
-  const accentClassMap = { blue: 'accent-blue-600', green: 'accent-green-600', purple: 'accent-purple-600' }
+  const TICKER_COLOR: Record<string, string> = { SCHD: '#2563eb', VOO: '#16a34a', QQQ: '#9333ea' }
 
   const sum = allocSum(state.etfAlloc)
   const valid = sum === 100
@@ -526,7 +526,7 @@ function AccountCard({
                 <input
                   type="range" min={0} max={100} step={5} value={pct}
                   onChange={e => setAllocPct(ticker, Number(e.target.value))}
-                  className={`flex-1 ${TICKER_ACCENT[ticker]}`}
+                  className="flex-1" style={{ accentColor: TICKER_COLOR[ticker] ?? '#2563eb' }}
                 />
                 <PctInput value={pct} onChange={v => setAllocPct(ticker, v)} />
               </div>
