@@ -499,7 +499,7 @@ function AccountCard({
       {/* 납입액 슬라이더 + 직접입력 */}
       <AmountInput
         value={amount} min={0} max={max} step={step} unit={unit}
-        accentClass={accentClassMap[color]}
+        accentColor={color === 'blue' ? '#2563eb' : color === 'green' ? '#16a34a' : '#9333ea'}
         onChange={setAmount}
       />
       <div className="text-xs text-slate-400">{sub}</div>
@@ -542,7 +542,7 @@ function AccountCard({
 
 function AmountInput({ value, min, max, step, unit, accentClass, onChange }: {
   value: number; min: number; max: number; step: number; unit: string
-  accentClass: string; onChange: (v: number) => void
+  accentColor: string; onChange: (v: number) => void
 }) {
   const [inputVal, setInputVal] = useState(String(value))
   useMemo(() => setInputVal(String(value)), [value])
@@ -552,7 +552,7 @@ function AmountInput({ value, min, max, step, unit, accentClass, onChange }: {
       <input
         type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
-        className={`flex-1 ${accentClass}`}
+        className="flex-1" style={{ accentColor: accentColor }}
       />
       <div className="flex items-center gap-1 flex-shrink-0">
         <input
