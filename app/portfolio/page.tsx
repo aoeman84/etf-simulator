@@ -1,10 +1,10 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
+import { redirect, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
-import { ETF_DATA, fmtKRW } from '@/lib/simulator'
+import { ETF_DATA, ETF_DATA_UPDATED_AT, fmtKRW } from '@/lib/simulator'
 
 interface SavedPortfolio {
   id: string
@@ -27,6 +27,7 @@ export default function PortfolioPage() {
   const { status } = useSession()
   if (status === 'unauthenticated') redirect('/login')
 
+  const router = useRouter()
   const [subTab, setSubTab] = useState<SubTab>('saved')
   const [portfolios, setPortfolios] = useState<SavedPortfolio[]>([])
   const [loadingPF, setLoadingPF] = useState(true)
@@ -108,6 +109,23 @@ export default function PortfolioPage() {
     setPortfolios(prev => prev.filter(p => p.id !== id))
   }
 
+  // ✅ 저장된 포트폴리오를 Sim에서 열기
+  function loadInSim(pf: SavedPortfolio) {
+    try {
+      const s = pf.settings
+      // localStorage에 Sim 상태 저장 → dashboard에서 usePersistedState로 읽음
+      if (s.allocations) localStorage.setItem('sim_allocations', JSON.stringify(s.allocations))
+      if (s.years)       localStorage.setItem('sim_years', JSON.stringify(s.years))
+      if (s.drip !== undefined) localStorage.setItem('sim_drip', JSON.stringify(s.drip))
+      if (s.tax)         localStorage.setItem('sim_tax', JSON.stringify(s.tax))
+      if (s.scenario)    localStorage.setItem('sim_scenario', JSON.stringify(s.scenario))
+      if (s.fxRate)      localStorage.setItem('sim_fxRate', JSON.stringify(s.fxRate))
+      router.push('/dashboard')
+    } catch {
+      showToastMsg('불러오기 실패')
+    }
+  }
+
   function calcReturn(p: Purchase) {
     const etf = ETF_DATA[p.ticker]
     const usdInvested = (p.amountKRW * 10000) / p.fxRate
@@ -141,7 +159,6 @@ export default function PortfolioPage() {
       <main className="max-w-4xl mx-auto px-4 py-4">
         {/* 서브 탭 */}
         <div className="grid grid-cols-2 gap-1 bg-white rounded-xl border border-slate-200 p-1 mb-5">
-          {/* ✅ 저장 목록 탭 아이콘 — 💾 이모지로 통일 */}
           <button
             onClick={() => setSubTab('saved')}
             className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
@@ -183,15 +200,15 @@ export default function PortfolioPage() {
                 {portfolios.map(pf => (
                   <div key={pf.id} className="card p-4">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="font-semibold text-sm text-slate-800 mb-1">{pf.name}</div>
-                        <div className="text-xs text-slate-400">
+                        <div className="text-xs text-slate-400 mb-2">
                           {new Date(pf.createdAt).toLocaleDateString('ko-KR', {
                             year: 'numeric', month: 'long', day: 'numeric'
                           })} 저장
                         </div>
                         {pf.settings?.allocations && (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
+                          <div className="flex flex-wrap gap-1.5 mb-3">
                             {pf.settings.allocations.map((a: any) => (
                               <span key={a.ticker} className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
                                 {a.ticker} {a.monthly}만
@@ -209,6 +226,16 @@ export default function PortfolioPage() {
                             )}
                           </div>
                         )}
+                        {/* ✅ Sim에서 열기 버튼 */}
+                        <button
+                          onClick={() => loadInSim(pf)}
+                          className="text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1"
+                        >
+                          <svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.499 2.499 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5z"/>
+                          </svg>
+                          Sim에서 열기
+                        </button>
                       </div>
                       <button
                         onClick={() => deletePortfolio(pf.id)}
@@ -217,6 +244,11 @@ export default function PortfolioPage() {
                     </div>
                   </div>
                 ))}
+
+                {/* ✅ 데이터 기준 안내 */}
+                <div className="text-xs text-slate-400 text-center pt-2">
+                  📊 ETF 데이터 기준: {ETF_DATA_UPDATED_AT} · 시뮬레이션은 과거 데이터 기반 추정값입니다
+                </div>
               </div>
             )}
           </div>

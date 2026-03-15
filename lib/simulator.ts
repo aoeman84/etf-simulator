@@ -1,18 +1,20 @@
 import { ETFInfo, TaxSettings, YearResult } from '@/types'
 import { calcTax, DEFAULT_TAX } from './tax'
 
-// ── ETF 기본 데이터 (2025년 기준) ────────────────────────────────
+// ── ETF 기본 데이터 기준: 2025년 3월 ────────────────────────────
 // 배당수익률: 최근 12개월 배당금 / 현재가
 // 배당성장 CAGR: 5~10년 배당 성장률 평균
-// 주가 CAGR: 설정 이후 연평균 수익률
+// 주가 CAGR: ETF 설정 이후 연평균 수익률
+export const ETF_DATA_UPDATED_AT = '2025년 3월'
+
 export const ETF_DATA: Record<string, ETFInfo> = {
   SCHD: {
     ticker: 'SCHD',
     name: 'Schwab US Dividend Equity ETF',
     price: 30.80,
     divYield: 3.4,
-    divGrowthCAGR: 11.0,   // 최근 5년 평균 하향 조정 (13% → 11%)
-    priceCAGR: 8.5,         // 2011~2024 평균 (8.86% → 8.5% 보수적 조정)
+    divGrowthCAGR: 11.0,
+    priceCAGR: 8.5,
     color: '#2563eb',
   },
   VOO: {
@@ -38,7 +40,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     name: 'Vanguard High Dividend Yield ETF',
     price: 125.0,
     divYield: 2.9,
-    divGrowthCAGR: 7.0,    // 7.5% → 7.0% 소폭 조정
+    divGrowthCAGR: 7.0,
     priceCAGR: 9.2,
     color: '#ea580c',
   },
@@ -47,7 +49,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     name: 'JPMorgan Equity Premium Income ETF',
     price: 57.0,
     divYield: 7.5,
-    divGrowthCAGR: 2.0,    // 커버드콜 특성상 배당성장 제한 (3% → 2%)
+    divGrowthCAGR: 2.0,
     priceCAGR: 5.5,
     color: '#0891b2',
   },
@@ -56,10 +58,12 @@ export const ETF_DATA: Record<string, ETFInfo> = {
 /**
  * 단일 ETF 시뮬레이션
  *
- * [v1.20 개선사항]
- * - 분기별 배당 지급 모델: SCHD/VOO/QQQ/VYM은 분기배당, JEPI는 월배당
- * - DRIP: 세후 배당금으로 재투자 (원천징수 15% + 종합소득세 추정 반영)
- * - 월별 적립 → 분기 배당 → 분기 재투자 순서로 정확한 복리 계산
+ * [v1.21 버그수정]
+ * - DRIP 세금 추정: 연중 누적 배당으로 연간 예상치를 과대추정하는 버그 수정
+ *   → 전년도 연간 실효세율을 사용해 당해연도 DRIP 세금 차감
+ *   → 1년차는 원천징수 15%만 적용 (종합소득세 기준 데이터 없음)
+ * - 분기배당: SCHD/VOO/QQQ/VYM → 3/6/9/12월, JEPI → 매월
+ * - DRIP: 세후 배당금으로 재투자
  */
 export function simulate(
   etf: ETFInfo,
@@ -83,56 +87,31 @@ export function simulate(
     ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     : [3, 6, 9, 12]
 
+  // 전년도 실효세율 (DRIP 계산용) — 1년차는 원천징수 15%만
+  let prevYearEffectiveRate = tax.enabled && tax.withholdingTax ? 0.15 : 0
+
   for (let y = 1; y <= years; y++) {
     const priceEnd = etf.price * Math.pow(1 + priceCAGR, y)
-    // 배당성장: 전년도 기준으로 성장 (y-1년 말 기준)
     const divPerShare = startDivPerShare * Math.pow(1 + divGrowth, y - 1)
-    // 분기배당이면 1회당 divPerShare/4, 월배당이면 divPerShare/12
     const divPerPeriod = isMonthlyDiv ? divPerShare / 12 : divPerShare / 4
 
     let annualDivUSD = 0
 
     for (let m = 1; m <= 12; m++) {
-      // 월별 매수 가격 (선형 보간)
       const priceMonth = etf.price * Math.pow(1 + priceCAGR, (y - 1) + m / 12)
       const usdAmount = monthlyKRW / fxRate
       totalShares += usdAmount / priceMonth
       totalInvested += monthlyKRW
 
-      // 배당 지급 월인지 확인
       if (divMonths.includes(m)) {
         const periodDivUSD = totalShares * divPerPeriod
         annualDivUSD += periodDivUSD
 
-        // DRIP: 세후 배당으로 재투자
+        // DRIP: 전년도 실효세율 기준으로 세후 금액 재투자
+        // → 연중 과대추정 없이 안정적으로 계산
         if (drip) {
           const periodDivKRW = periodDivUSD * fxRate
-          let afterTaxDivKRW = periodDivKRW
-
-          if (tax.enabled && tax.withholdingTax) {
-            // 원천징수 15% 차감
-            afterTaxDivKRW = periodDivKRW * 0.85
-          }
-
-          // 종합소득세 추정: 연간 배당 예상치로 초과분 추정
-          // 연간 예상 배당 = 현재까지 누적 배당 / 경과월 * 12
-          const estimatedAnnualDivKRW = annualDivUSD * fxRate * (12 / m)
-          const otherFinancial = tax.otherFinancialIncomeKRW ?? 0
-          const estimatedTotalFinancial = estimatedAnnualDivKRW + otherFinancial
-
-          if (
-            tax.enabled &&
-            tax.comprehensiveIncomeTax &&
-            estimatedTotalFinancial > 20_000_000
-          ) {
-            // 종합소득세 추가 부담 비율 추정 (연간 기준으로 월할 차감)
-            const annualTax = calcTax(estimatedAnnualDivKRW, 0, tax)
-            const effectiveRate = estimatedAnnualDivKRW > 0
-              ? annualTax.totalDivTaxKRW / estimatedAnnualDivKRW
-              : 0.15
-            afterTaxDivKRW = periodDivKRW * (1 - effectiveRate)
-          }
-
+          const afterTaxDivKRW = periodDivKRW * (1 - prevYearEffectiveRate)
           totalShares += (afterTaxDivKRW / fxRate) / priceMonth
         }
       }
@@ -141,7 +120,14 @@ export function simulate(
     const portfolioKRW = totalShares * priceEnd * fxRate
     const annualDivKRW = annualDivUSD * fxRate
     const gainKRW = portfolioKRW - totalInvested
+
+    // 연간 실제 세금 계산 (표시용)
     const taxResult = calcTax(annualDivKRW, gainKRW, tax)
+
+    // 다음 연도 DRIP 세금 추정에 쓸 실효세율 업데이트
+    if (annualDivKRW > 0) {
+      prevYearEffectiveRate = taxResult.totalDivTaxKRW / annualDivKRW
+    }
 
     results.push({
       year: y,
