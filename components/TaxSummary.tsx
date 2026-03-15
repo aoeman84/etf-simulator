@@ -6,28 +6,37 @@ interface Props {
   result: YearResult
   taxEnabled: boolean
   otherFinancialIncomeKRW?: number
+  otherIncomeKRW?: number
 }
 
-function getTaxBracketLabel(income: number): string {
-  if (income <= 0)             return '-'
-  if (income <= 14_000_000)   return '6% 구간'
-  if (income <= 50_000_000)   return '15% 구간'
-  if (income <= 88_000_000)   return '24% 구간'
-  if (income <= 150_000_000)  return '35% 구간'
-  if (income <= 300_000_000)  return '38% 구간'
-  if (income <= 500_000_000)  return '40% 구간'
-  if (income <= 1_000_000_000) return '42% 구간'
-  return '45% 구간'
+function getTaxBracketLabel(totalIncome: number): string {
+  if (totalIncome <= 0)              return '-'
+  if (totalIncome <= 14_000_000)    return '6%'
+  if (totalIncome <= 50_000_000)    return '15%'
+  if (totalIncome <= 88_000_000)    return '24%'
+  if (totalIncome <= 150_000_000)   return '35%'
+  if (totalIncome <= 300_000_000)   return '38%'
+  if (totalIncome <= 500_000_000)   return '40%'
+  if (totalIncome <= 1_000_000_000) return '42%'
+  return '45%'
 }
 
-export default function TaxSummary({ result, taxEnabled, otherFinancialIncomeKRW = 0 }: Props) {
+export default function TaxSummary({
+  result,
+  taxEnabled,
+  otherFinancialIncomeKRW = 0,
+  otherIncomeKRW = 0,
+}: Props) {
   const t = result.tax
   if (!taxEnabled) return null
 
   const excessAmount = t.exceedsThreshold
     ? t.financialIncomeKRW - 20_000_000
     : 0
-  const bracketLabel = getTaxBracketLabel(excessAmount)
+
+  // ✅ 다른 종합소득 + 초과 금융소득 합산으로 구간 결정
+  const combinedForBracket = otherIncomeKRW + excessAmount
+  const bracketLabel = getTaxBracketLabel(combinedForBracket)
 
   return (
     <div className="card p-5 space-y-4">
@@ -36,7 +45,6 @@ export default function TaxSummary({ result, taxEnabled, otherFinancialIncomeKRW
         <span className="text-xs text-slate-400">{result.year}년차 기준</span>
       </div>
 
-      {/* 배당 세금 */}
       <div className="space-y-2">
         <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">배당소득세</div>
         <TaxRow label="세전 연 배당금 (이 ETF)" value={fmtKRW(result.annualDivKRW)} />
@@ -50,7 +58,7 @@ export default function TaxSummary({ result, taxEnabled, otherFinancialIncomeKRW
         <TaxRow label="미국 원천징수 15%" value={`-${fmtKRW(t.withholdingTaxKRW)}`} negative />
         {t.surchargeKRW > 0 && (
           <TaxRow
-            label={`종소세 추가 납부 (${bracketLabel} 누진세)`}
+            label={`종소세 추가 납부 (${bracketLabel} 구간 누진세)`}
             value={`-${fmtKRW(t.surchargeKRW)}`}
             negative
           />
@@ -61,7 +69,6 @@ export default function TaxSummary({ result, taxEnabled, otherFinancialIncomeKRW
         </div>
       </div>
 
-      {/* 종합과세 초과 경고 */}
       {t.exceedsThreshold ? (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-3">
           <div className="flex items-start gap-2">
@@ -70,8 +77,9 @@ export default function TaxSummary({ result, taxEnabled, otherFinancialIncomeKRW
               <div className="text-sm font-semibold text-orange-700">금융소득 종합과세 대상</div>
               <div className="text-xs text-orange-600 mt-0.5">
                 전체 금융소득 {fmtKRW(t.financialIncomeKRW)} → 2,000만원 초과<br />
-                초과분 {fmtKRW(excessAmount)}에{' '}
-                <strong>누진세 자동 적용</strong> ({bracketLabel})<br />
+                초과분 {fmtKRW(excessAmount)}
+                {otherIncomeKRW > 0 && ` + 종합소득 ${fmtKRW(otherIncomeKRW)}`}
+                에 <strong>누진세 자동 적용</strong> ({bracketLabel} 구간)<br />
                 추가 납부 {fmtKRW(t.surchargeKRW)}
               </div>
             </div>
@@ -92,7 +100,6 @@ export default function TaxSummary({ result, taxEnabled, otherFinancialIncomeKRW
         </div>
       )}
 
-      {/* 건강보험 경고 */}
       {t.healthInsuranceRisk && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-3">
           <div className="flex items-start gap-2">
@@ -108,7 +115,6 @@ export default function TaxSummary({ result, taxEnabled, otherFinancialIncomeKRW
         </div>
       )}
 
-      {/* 양도세 */}
       <div className="space-y-2">
         <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">양도소득세 (매도 시)</div>
         <TaxRow label="누적 평가차익" value={fmtKRW(result.gainKRW)} />
@@ -118,7 +124,6 @@ export default function TaxSummary({ result, taxEnabled, otherFinancialIncomeKRW
         </div>
       </div>
 
-      {/* 총 세금 요약 */}
       <div className="bg-slate-50 rounded-xl p-3 space-y-1">
         <div className="text-xs font-semibold text-slate-500 mb-2">연간 세금 총합</div>
         <div className="flex justify-between items-center">
@@ -127,14 +132,12 @@ export default function TaxSummary({ result, taxEnabled, otherFinancialIncomeKRW
         </div>
         <div className="flex justify-between items-center">
           <span className="text-xs text-slate-400">실효세율 (자동 누진 계산)</span>
-          <span className="text-xs font-semibold text-slate-600">
-            {t.effectiveTaxRate.toFixed(1)}%
-          </span>
+          <span className="text-xs font-semibold text-slate-600">{t.effectiveTaxRate.toFixed(1)}%</span>
         </div>
         {t.exceedsThreshold && (
           <div className="flex justify-between items-center">
             <span className="text-xs text-slate-400">적용 누진세 구간</span>
-            <span className="text-xs font-semibold text-orange-600">{bracketLabel}</span>
+            <span className="text-xs font-semibold text-orange-600">{bracketLabel} 구간</span>
           </div>
         )}
       </div>
@@ -142,9 +145,7 @@ export default function TaxSummary({ result, taxEnabled, otherFinancialIncomeKRW
   )
 }
 
-function TaxRow({
-  label, value, negative, highlight,
-}: {
+function TaxRow({ label, value, negative, highlight }: {
   label: string; value: string; negative?: boolean; highlight?: boolean
 }) {
   return (

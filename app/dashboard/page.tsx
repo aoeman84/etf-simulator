@@ -103,7 +103,6 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-slate-50">
       <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} />} />
       <InstallPrompt />
-      {/* 저장 완료 토스트 */}
       {showToast && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
           <span>💾</span>
@@ -133,20 +132,16 @@ export default function DashboardPage() {
                   onChange={setAllocations}
                   actionSlot={
                     <>
-                      {/* ✅ 저장 버튼 — 💾 이모지로 통일 */}
                       <button
                         onClick={savePortfolio}
                         disabled={saving}
                         title={saved ? '저장됨' : '포트폴리오 저장'}
                         className={`w-7 h-7 flex items-center justify-center rounded-lg border transition-all disabled:opacity-40 text-base ${
-                          saved
-                            ? 'border-blue-300 bg-blue-50'
-                            : 'border-slate-200 bg-white hover:bg-slate-50'
+                          saved ? 'border-blue-300 bg-blue-50' : 'border-slate-200 bg-white hover:bg-slate-50'
                         }`}
                       >
                         {saved ? '✅' : '💾'}
                       </button>
-                      {/* 공유 버튼 */}
                       <button
                         onClick={shareResult}
                         title={shared ? '복사됨!' : '결과 공유'}
@@ -170,16 +165,12 @@ export default function DashboardPage() {
                     </>
                   }
                 />
-
                 <div className="border-t border-slate-100 pt-4 space-y-4">
                   <NumberSlider label="투자 기간" value={years} min={1} max={30} step={1}
                     display={`${years}년`} unit="년" onChange={setYears} />
-                  <NumberSlider
-                    label="환율"
-                    value={fxRate} min={1000} max={1800} step={10}
+                  <NumberSlider label="환율" value={fxRate} min={1000} max={1800} step={10}
                     display={`${fxRate.toLocaleString()}원`} unit="원" onChange={setFxRate}
-                    highlight={fxLoaded}
-                  />
+                    highlight={fxLoaded} />
                 </div>
                 <div className="flex items-center gap-3">
                   <input type="checkbox" id="drip" checked={drip}
@@ -202,7 +193,13 @@ export default function DashboardPage() {
                     {results.map(r => <option key={r.year} value={r.year}>{r.year}년차</option>)}
                   </select>
                 </div>
-                <TaxSummary result={selectedResult} taxEnabled={tax.enabled} />
+                {/* ✅ otherFinancialIncomeKRW, otherIncomeKRW 전달 */}
+                <TaxSummary
+                  result={selectedResult}
+                  taxEnabled={tax.enabled}
+                  otherFinancialIncomeKRW={tax.otherFinancialIncomeKRW ?? 0}
+                  otherIncomeKRW={tax.otherIncomeKRW ?? 0}
+                />
               </div>
             )}
           </div>
@@ -346,7 +343,6 @@ function NumberSlider({ label, value, min, max, step, display, unit, onChange, h
 }) {
   const [inputVal, setInputVal] = useState(String(value))
   useEffect(() => { setInputVal(String(value)) }, [value])
-
   return (
     <div>
       <div className="flex justify-between mb-1">
