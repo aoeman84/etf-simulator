@@ -36,25 +36,21 @@ export default function TaxPanel({ tax, onChange }: Props) {
 
       {tax.enabled && (
         <div className="space-y-3">
-
           {/* 배당소득세 */}
           <div className="card p-4 space-y-3">
             <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">배당소득세</div>
-
             <CheckRow
               label="미국 원천징수세 15%"
               desc="SCHD 등 미국 ETF 배당금에서 자동 차감"
               checked={tax.withholdingTax}
               onChange={v => set('withholdingTax', v)}
             />
-
             <CheckRow
               label="금융소득 종합과세"
               desc="연 금융소득 2,000만원 초과 시 종합소득세 합산"
               checked={tax.comprehensiveIncomeTax}
               onChange={v => set('comprehensiveIncomeTax', v)}
             />
-
             {tax.comprehensiveIncomeTax && (
               <div className="pl-6 space-y-3 border-l-2 border-slate-100 ml-1">
                 <div>
@@ -75,13 +71,19 @@ export default function TaxPanel({ tax, onChange }: Props) {
 
                 <div>
                   <div className="flex justify-between mb-1">
-                    <label className="text-xs text-slate-600">종합소득세 한계세율</label>
+                    <label className="text-xs text-slate-600 leading-tight">
+                      종합소득세 한계세율
+                    </label>
                     <span className="text-xs font-semibold text-red-600">{tax.marginalRate}%</span>
                   </div>
+                  {/* 설명 추가 */}
+                  <p className="text-xs text-slate-400 mb-2 leading-relaxed">
+                    배당 <span className="font-medium text-slate-500">외</span> 근로·사업소득 기준으로 선택하세요.
+                    배당 합산 후 구간이 달라질 수 있으니 여유 있게 선택 권장.
+                  </p>
                   <div className="grid grid-cols-4 gap-1.5">
                     {[15, 24, 35, 38, 40, 42, 45].map(r => (
-                      <button key={r}
-                        onClick={() => set('marginalRate', r)}
+                      <button key={r} onClick={() => set('marginalRate', r)}
                         className={`text-xs py-1.5 rounded-lg border transition-all ${
                           tax.marginalRate === r
                             ? 'bg-red-500 text-white border-red-500'
@@ -128,8 +130,7 @@ export default function TaxPanel({ tax, onChange }: Props) {
           </div>
 
           {/* 초기화 */}
-          <button
-            onClick={() => onChange(DEFAULT_TAX)}
+          <button onClick={() => onChange(DEFAULT_TAX)}
             className="text-xs text-slate-400 hover:text-slate-600 transition-colors">
             ↺ 기본값으로 초기화
           </button>
@@ -147,9 +148,11 @@ function CheckRow({ label, desc, checked, onChange }: {
       <div className={`mt-0.5 w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center transition-all ${
         checked ? 'bg-blue-600 border-blue-600' : 'border-slate-300'
       }`}>
-        {checked && <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-          <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>}
+        {checked && (
+          <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        )}
       </div>
       <div>
         <div className="text-sm font-medium text-slate-700">{label}</div>

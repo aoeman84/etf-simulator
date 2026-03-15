@@ -225,42 +225,52 @@ export default function ComparePage() {
                   <span className="text-xs text-green-500 flex items-center gap-1">● 실시간 가격 반영</span>
                 )}
               </div>
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50">
-                  <tr>
-                    {['ETF', '현재가', '배당수익률', '배당성장(CAGR)', '주가상승(CAGR)', `${years}년 후 월배당`].map(h => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-medium text-slate-500">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {selected.map(t => {
-                    const etf = ETF_DATA[t]
-                    const r = compareResults[t]
-                    const last = r?.[r.length - 1]
-                    const livePrice = livePrices[t]
-                    return (
-                      <tr key={t} className="hover:bg-slate-50">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full" style={{ background: etf.color }} />
-                            <span className="font-semibold">{t}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {livePrice
-                            ? <span className="font-medium text-slate-800">${livePrice.toFixed(2)}</span>
-                            : <span className="text-slate-500">${etf.price.toFixed(2)}</span>}
-                        </td>
-                        <td className="px-4 py-3 text-amber-600">{etf.divYield}%</td>
-                        <td className="px-4 py-3 text-blue-600">{etf.divGrowthCAGR}%</td>
-                        <td className="px-4 py-3 text-green-600">{etf.priceCAGR}%</td>
-                        <td className="px-4 py-3 font-medium">{last ? fmtKRW(last.monthlyDivKRW) : '-'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
+              {/* 가로 스크롤 컨테이너 */}
+              <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: 'touch' as any }}>
+                <table className="text-sm" style={{ minWidth: '560px', width: '100%' }}>
+                  <thead className="bg-slate-50">
+                    <tr>
+                      {/* ETF 컬럼 sticky */}
+                      <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 sticky left-0 bg-slate-50 z-10 whitespace-nowrap"
+                          style={{ boxShadow: '2px 0 4px rgba(0,0,0,0.04)' }}>
+                        ETF
+                      </th>
+                      {['현재가', '배당수익률', '배당성장(CAGR)', '주가상승(CAGR)', `${years}년 후 월배당`].map(h => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-medium text-slate-500 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {selected.map(t => {
+                      const etf = ETF_DATA[t]
+                      const r = compareResults[t]
+                      const last = r?.[r.length - 1]
+                      const livePrice = livePrices[t]
+                      return (
+                        <tr key={t} className="hover:bg-slate-50">
+                          {/* ETF 컬럼 sticky */}
+                          <td className="px-4 py-3 sticky left-0 bg-white z-10 whitespace-nowrap"
+                              style={{ boxShadow: '2px 0 4px rgba(0,0,0,0.04)' }}>
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: etf.color }} />
+                              <span className="font-semibold">{t}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {livePrice
+                              ? <span className="font-medium text-slate-800">${livePrice.toFixed(2)}</span>
+                              : <span className="text-slate-500">${etf.price.toFixed(2)}</span>}
+                          </td>
+                          <td className="px-4 py-3 text-amber-600 whitespace-nowrap">{etf.divYield}%</td>
+                          <td className="px-4 py-3 text-blue-600 whitespace-nowrap">{etf.divGrowthCAGR}%</td>
+                          <td className="px-4 py-3 text-green-600 whitespace-nowrap">{etf.priceCAGR}%</td>
+                          <td className="px-4 py-3 font-medium whitespace-nowrap">{last ? fmtKRW(last.monthlyDivKRW) : '-'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
