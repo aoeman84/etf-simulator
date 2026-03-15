@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { ETF_DATA, ETF_DATA_UPDATED_AT } from '@/lib/simulator'
 
 export interface ScenarioSettings {
   mode: 'optimistic' | 'neutral' | 'pessimistic' | 'custom'
@@ -37,22 +38,31 @@ export const SCENARIOS: Record<string, {
 interface Props {
   scenario: ScenarioSettings
   onChange: (s: ScenarioSettings) => void
+  selectedTickers?: string[]
 }
 
-export default function ScenarioModal({ scenario, onChange }: Props) {
+function getEffectiveCAGR(base: number, adj: number, mode: string): number {
+  if (mode === 'pessimistic') return Math.max(0, base * 0.5)
+  return Math.max(0, base + adj)
+}
+
+export default function ScenarioModal({ scenario, onChange, selectedTickers }: Props) {
   const [open, setOpen] = useState(false)
   const current = SCENARIOS[scenario.mode]
 
   const btnClass = {
-    optimistic: 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100',
-    neutral:    'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100',
-    pessimistic:'bg-red-50 border-red-200 text-red-700 hover:bg-red-100',
-    custom:     'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
+    optimistic:  'bg-green-50 border-green-200 text-green-700 hover:bg-green-100',
+    neutral:     'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100',
+    pessimistic: 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100',
+    custom:      'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
   }[scenario.mode]
+
+  const tickersToShow = selectedTickers?.length
+    ? selectedTickers.filter(t => ETF_DATA[t])
+    : Object.keys(ETF_DATA)
 
   return (
     <>
-      {/* 설정 아이콘 없이 버튼 자체가 팝업 트리거 */}
       <button
         onClick={() => setOpen(true)}
         className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border transition-all ${btnClass}`}
@@ -68,7 +78,7 @@ export default function ScenarioModal({ scenario, onChange }: Props) {
           onClick={() => setOpen(false)}
         >
           <div
-            className="bg-white w-full sm:rounded-2xl sm:max-w-md max-h-[90vh] overflow-y-auto rounded-t-2xl"
+            className="bg-white w-full sm:rounded-2xl sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl"
             onClick={e => e.stopPropagation()}
           >
             <div className="p-5">
@@ -113,6 +123,73 @@ export default function ScenarioModal({ scenario, onChange }: Props) {
                     <p className="text-xs text-slate-500 leading-relaxed">{s.desc}</p>
                   </button>
                 ))}
+              </div>
+
+              {/* ✅ ETF별 실제 적용 수치 표 */}
+              <div className="border border-slate-100 rounded-xl overflow-hidden mb-4">
+                <div className="bg-slate-50 px-3 py-2 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-slate-600">
+                    현재 시나리오 적용 수치
+                  </span>
+                  <span className="text-xs text-slate-400">기준: {ETF_DATA_UPDATED_AT}</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs" style={{ minWidth: '360px' }}>
+                    <thead>
+                      <tr className="border-b border-slate-100">
+                        <th className="text-left px-3 py-2 text-slate-500 font-medium">ETF</th>
+                        <th className="text-right px-3 py-2 text-slate-500 font-medium">배당수익률</th>
+                        <th className="text-right px-3 py-2 text-slate-500 font-medium">주가 CAGR</th>
+                        <th className="text-right px-3 py-2 text-slate-500 font-medium">배당성장</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {tickersToShow.map(ticker => {
+                        const etf = ETF_DATA[ticker]
+                        const effPrice = getEffectiveCAGR(etf.priceCAGR, scenario.priceCAGRAdj, scenario.mode)
+                        const effDiv = getEffectiveCAGR(etf.divGrowthCAGR, scenario.divGrowthAdj, scenario.mode)
+                        const isAdjusted = scenario.mode !== 'optimistic'
+                        const priceChanged = isAdjusted && Math.abs(effPrice - etf.priceCAGR) > 0.01
+                        const divChanged = isAdjusted && Math.abs(effDiv - etf.divGrowthCAGR) > 0.01
+                        return (
+                          <tr key={ticker} className="hover:bg-slate-50">
+                            <td className="px-3 py-2">
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-2 h-2 rounded-full flex-shrink-0"
+                                  style={{ background: etf.color }} />
+                                <span className="font-semibold text-slate-700">{ticker}</span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-right text-amber-600 font-medium">
+                              {etf.divYield}%
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <span className={priceChanged ? 'text-orange-600 font-semibold' : 'text-green-600 font-medium'}>
+                                {effPrice.toFixed(1)}%
+                              </span>
+                              {priceChanged && (
+                                <span className="text-slate-400 ml-1 line-through">{etf.priceCAGR}%</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2 text-right">
+                              <span className={divChanged ? 'text-orange-600 font-semibold' : 'text-blue-600 font-medium'}>
+                                {effDiv.toFixed(1)}%
+                              </span>
+                              {divChanged && (
+                                <span className="text-slate-400 ml-1 line-through">{etf.divGrowthCAGR}%</span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="px-3 py-2 bg-slate-50 border-t border-slate-100">
+                  <p className="text-xs text-slate-400">
+                    취소선 = 낙관 기준값 · 주황색 = 시나리오 조정 적용됨
+                  </p>
+                </div>
               </div>
 
               {/* 직접 설정 슬라이더 */}
