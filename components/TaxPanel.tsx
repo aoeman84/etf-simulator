@@ -1,4 +1,5 @@
 'use client'
+import { useState, useEffect } from 'react'
 import { TaxSettings } from '@/types'
 import { DEFAULT_TAX } from '@/lib/tax'
 
@@ -7,7 +8,7 @@ interface Props {
   onChange: (t: TaxSettings) => void
 }
 
-// 슬라이더 0 → 0원 / 슬라이더 50 → 8,800만원 / 슬라이더 100 → 12억
+// 슬라이더 0 → 0원 / 50 → 8,800만원 / 100 → 12억
 const ANCHOR_MID = 88_000_000
 const ANCHOR_MAX = 1_200_000_000
 const MIN_INCOME = 1_000_000
@@ -25,7 +26,7 @@ function sliderToIncome(v: number): number {
 
 function incomeToSlider(income: number): number {
   if (income <= 0) return 0
-  if (income >= ANCHOR_MAX) return 100
+  if (income >= ANCHOR_MAX) return 100 // 12억 초과도 슬라이더는 100 고정
   if (income <= ANCHOR_MID) {
     if (income < MIN_INCOME) return 0
     return Math.round(Math.log(income / MIN_INCOME) / Math.log(ANCHOR_MID / MIN_INCOME) * 50)
@@ -43,33 +44,26 @@ function fmtIncome(v: number): string {
 }
 
 function getBracket(income: number): { rate: string; color: string } {
-  const brackets = [
-    { max: 0,            rate: '-',   color: 'bg-slate-100 text-slate-400' },
-    { max: 14_000_000,   rate: '6%',  color: 'bg-slate-100 text-slate-500' },
-    { max: 50_000_000,   rate: '15%', color: 'bg-slate-100 text-slate-500' },
-    { max: 88_000_000,   rate: '24%', color: 'bg-blue-100 text-blue-600' },
-    { max: 150_000_000,  rate: '35%', color: 'bg-amber-100 text-amber-600' },
-    { max: 300_000_000,  rate: '38%', color: 'bg-orange-100 text-orange-600' },
-    { max: 500_000_000,  rate: '40%', color: 'bg-orange-200 text-orange-700' },
-    { max: 1_000_000_000,rate: '42%', color: 'bg-red-100 text-red-600' },
-    { max: Infinity,     rate: '45%', color: 'bg-red-200 text-red-700' },
-  ]
-  if (income <= 0) return brackets[0]
-  for (const b of brackets.slice(1)) {
-    if (income <= b.max) return b
-  }
-  return brackets[brackets.length - 1]
+  if (income <= 0)               return { rate: '-',   color: 'bg-slate-100 text-slate-400' }
+  if (income <= 14_000_000)     return { rate: '6%',  color: 'bg-slate-100 text-slate-500' }
+  if (income <= 50_000_000)     return { rate: '15%', color: 'bg-slate-100 text-slate-500' }
+  if (income <= 88_000_000)     return { rate: '24%', color: 'bg-blue-100 text-blue-600' }
+  if (income <= 150_000_000)    return { rate: '35%', color: 'bg-amber-100 text-amber-600' }
+  if (income <= 300_000_000)    return { rate: '38%', color: 'bg-orange-100 text-orange-600' }
+  if (income <= 500_000_000)    return { rate: '40%', color: 'bg-orange-200 text-orange-700' }
+  if (income <= 1_000_000_000)  return { rate: '42%', color: 'bg-red-100 text-red-600' }
+  return { rate: '45%', color: 'bg-red-200 text-red-700' }
 }
 
-// 눈금 — 슬라이더 위치값 미리 계산
+// 눈금 (슬라이더 위치값 사전 계산)
 const TICKS = [
-  { label: '0',      pos: 0  },
-  { label: '1,400만', pos: 29 },
-  { label: '5,000만', pos: 44 },
-  { label: '8,800만', pos: 50 },
-  { label: '1.5억',   pos: 60 },
-  { label: '3억',     pos: 73 },
-  { label: '5억',     pos: 83 },
+  { label: '0',      pos: 0   },
+  { label: '1,400만', pos: 29  },
+  { label: '5,000만', pos: 44  },
+  { label: '8,800만', pos: 50  },
+  { label: '1.5억',   pos: 60  },
+  { label: '3억',     pos: 73  },
+  { label: '5억',     pos: 83  },
   { label: '12억↑',   pos: 100 },
 ]
 
@@ -82,11 +76,32 @@ export default function TaxPanel({ tax, onChange }: Props) {
   const sliderVal = incomeToSlider(otherIncome)
   const { rate, color } = getBracket(otherIncome)
 
-  // 슬라이더 현재 위치와 가장 가까운 눈금 인덱스
+  // 만원 단위 직접 입력 상태
+  // ✅ 12억 초과 입력도 허용 (max 없음)
+  const [inputMan, setInputMan] = useState(String(Math.round(otherIncome / 10000)))
+
+  useEffect(() => {
+    setInputMan(String(Math.round(otherIncome / 10000)))
+  }, [otherIncome])
+
+  function handleInputChange(raw: string) {
+    setInputMan(raw)
+    const n = parseInt(raw.replace(/,/g, ''), 10)
+    if (!isNaN(n) && n >= 0) {
+      set('otherIncomeKRW', n * 10000)
+    }
+  }
+
+  function handleInputBlur() {
+    const n = parseInt(inputMan.replace(/,/g, ''), 10)
+    const val = isNaN(n) || n < 0 ? 0 : n
+    setInputMan(String(val))
+    set('otherIncomeKRW', val * 10000)
+  }
+
+  // 현재 슬라이더 위치에서 가장 가까운 눈금
   const nearestTickIdx = TICKS.reduce((best, tick, i) => {
-    const d = Math.abs(sliderVal - tick.pos)
-    const bd = Math.abs(sliderVal - TICKS[best].pos)
-    return d < bd ? i : best
+    return Math.abs(sliderVal - tick.pos) < Math.abs(sliderVal - TICKS[best].pos) ? i : best
   }, 0)
 
   return (
@@ -137,28 +152,42 @@ export default function TaxPanel({ tax, onChange }: Props) {
                   <p className="text-xs text-slate-400 mt-1">배당 + 이자 합산 2,000만원 초과 시 종합과세 대상</p>
                 </div>
 
-                {/* 다른 종합소득 — 로그 스케일 + 동적 눈금 */}
+                {/* 다른 종합소득 — 로그 슬라이더 + 만원 직접 입력 */}
                 <div>
                   <div className="flex justify-between mb-1">
                     <label className="text-xs text-slate-600">다른 종합소득 <span className="text-slate-400">(근로·사업소득)</span></label>
                     <div className="flex items-center gap-1.5">
-                      {/* 세율 구간 배지 — 소득 바뀔 때마다 색상 변경 */}
                       <span className={`text-xs font-bold px-1.5 py-0.5 rounded transition-all ${color}`}>
                         {rate === '-' ? '미해당' : rate}
-                      </span>
-                      {/* 소득 금액 — 슬라이더 움직일 때마다 실시간 표시 */}
-                      <span className="text-xs font-semibold text-orange-600">
-                        {fmtIncome(otherIncome)}/년
                       </span>
                     </div>
                   </div>
 
+                  {/* ✅ 만원 단위 직접 입력 — 12억 초과도 허용 */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <input
+                      type="number"
+                      min={0}
+                      value={inputMan}
+                      onChange={e => handleInputChange(e.target.value)}
+                      onBlur={handleInputBlur}
+                      className="w-28 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-orange-600 outline-none focus:ring-2 focus:ring-orange-400"
+                      inputMode="numeric"
+                      placeholder="0"
+                    />
+                    <span className="text-xs text-slate-500">만원/년</span>
+                    <span className="text-xs text-slate-400 ml-auto">
+                      = {fmtIncome(otherIncome)}
+                    </span>
+                  </div>
+
+                  {/* 로그 슬라이더 (12억 이상이면 100 고정) */}
                   <input type="range" min={0} max={100} step={1}
                     value={sliderVal}
                     onChange={e => set('otherIncomeKRW', sliderToIncome(Number(e.target.value)))}
                     className="w-full accent-orange-500" />
 
-                  {/* 동적 눈금 — nearestTickIdx 위치만 주황색 강조 */}
+                  {/* 동적 눈금 */}
                   <div className="flex justify-between mt-2">
                     {TICKS.map((tick, i) => (
                       <div key={tick.label} className="flex flex-col items-center gap-0.5">
@@ -166,9 +195,7 @@ export default function TaxPanel({ tax, onChange }: Props) {
                           i === nearestTickIdx ? 'bg-orange-400' : 'bg-slate-200'
                         }`} />
                         <span className={`text-xs transition-all leading-tight ${
-                          i === nearestTickIdx
-                            ? 'text-orange-500 font-semibold'
-                            : 'text-slate-300'
+                          i === nearestTickIdx ? 'text-orange-500 font-semibold' : 'text-slate-300'
                         }`}>
                           {tick.label}
                         </span>
@@ -177,7 +204,7 @@ export default function TaxPanel({ tax, onChange }: Props) {
                   </div>
 
                   <p className="text-xs text-slate-400 mt-1.5">
-                    중간(50) = 8,800만원 · 최대 12억 · 45% 구간 커버
+                    슬라이더 중간 = 8,800만원 · 직접 입력 시 12억 초과 가능
                   </p>
                 </div>
 
