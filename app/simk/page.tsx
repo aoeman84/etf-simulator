@@ -483,18 +483,23 @@ function AccountCard({
   function setAllocPct(ticker: string, pct: number) {
     setState(prev => {
       const clamped = Math.max(0, Math.min(100, pct))
-      const absorber = ticker === 'QQQ' ? 'VOO' : 'QQQ'
-      const fixed = prev.etfAlloc
-        .filter(a => a.ticker !== ticker && a.ticker !== absorber)
-        .reduce((s, a) => s + a.pct, 0)
-      const absorberPct = Math.max(0, 100 - clamped - fixed)
+      const others = prev.etfAlloc.filter(a => a.ticker !== ticker)
+      const othersSum = others.reduce((s, a) => s + a.pct, 0)
+      const remaining = 100 - clamped
+      const newOthers = othersSum > 0
+        ? others.map(a => ({ ...a, pct: Math.round(a.pct / othersSum * remaining) }))
+        : others.map(a => ({ ...a, pct: Math.round(remaining / others.length) }))
+      // 반올림 오차 보정: 첫 번째 other에 나머지 흡수
+      const newOthersSum = newOthers.reduce((s, a) => s + a.pct, 0)
+      const diff = remaining - newOthersSum
+      if (diff !== 0 && newOthers.length > 0) newOthers[0].pct += diff
       return {
         ...prev,
-        etfAlloc: prev.etfAlloc.map(a => {
-          if (a.ticker === ticker)   return { ...a, pct: clamped }
-          if (a.ticker === absorber) return { ...a, pct: absorberPct }
-          return a
-        }),
+        etfAlloc: prev.etfAlloc.map(a =>
+          a.ticker === ticker
+            ? { ...a, pct: clamped }
+            : newOthers.find(o => o.ticker === a.ticker)!
+        ),
       }
     })
   }
