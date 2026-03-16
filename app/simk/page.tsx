@@ -136,19 +136,19 @@ export default function SimKPage() {
     <div className="min-h-screen bg-slate-50">
       <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={activeTickers} useSimkYield />} />
 
-      <main className="max-w-6xl mx-auto px-4 py-4">
-        <div className="mb-4">
-          <h1 className="text-lg font-bold text-slate-800">Sim K — 절세 계좌 시뮬레이터</h1>
-          <p className="text-xs text-slate-500 mt-0.5">ISA + 연금저축 + IRP 절세 계좌를 활용했을 때 절세 효과를 시뮬레이션합니다.</p>
+      <main className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
+        <div className="mb-3 sm:mb-4">
+          <h1 className="text-base sm:text-lg font-bold text-slate-800">Sim K — 절세 계좌 시뮬레이터</h1>
+          <p className="text-xs text-slate-500 mt-0.5 hidden sm:block">ISA + 연금저축 + IRP 절세 계좌를 활용했을 때 절세 효과를 시뮬레이션합니다.</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-5">
 
           {/* ── 왼쪽 패널 ── */}
           <div className="space-y-4">
 
             {/* 납입 방식 */}
-            <div className="card p-4">
+            <div className="card p-3 sm:p-4">
               <label className="text-sm font-semibold text-slate-700 block mb-2">납입 방식</label>
               <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
                 {(['monthly', 'annual'] as const).map(m => (
@@ -196,7 +196,7 @@ export default function SimKPage() {
             />
 
             {/* 세액공제율 */}
-            <div className="card p-4">
+            <div className="card p-3 sm:p-4">
               <label className="text-sm font-medium text-slate-700 block mb-2">세액공제율</label>
               <div className="flex gap-2">
                 {[
@@ -218,7 +218,7 @@ export default function SimKPage() {
             </div>
 
             {/* 나이 슬라이더 */}
-            <div className="card p-4 space-y-3">
+            <div className="card p-3 sm:p-4 space-y-3">
               <SliderRow label="투자 시작 나이" value={startAge} min={20} max={60} step={1}
                 display={`${startAge}세`} onChange={v => { setStartAge(v); if (currentAge < v) setCurrentAge(v) }} />
               <SliderRow label="현재 나이" value={currentAge} min={startAge} max={60} step={1}
@@ -245,11 +245,11 @@ export default function SimKPage() {
           </div>
 
           {/* ── 오른쪽 ── */}
-          <div className="lg:col-span-2 space-y-5">
+          <div className="lg:col-span-2 space-y-3 sm:space-y-5">
 
             {/* 핵심 지표 카드 */}
             {primary && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                 <StatCard label="총 납입원금" value={fmtKRW(primary.totalContributed)} />
                 <StatCard label="절세 계좌 최종 잔액" value={fmtKRW(primary.finalBalance)}
                   color="blue" sub={`${retirementAge}세 기준`} />
@@ -286,18 +286,27 @@ export default function SimKPage() {
                 <div className="text-xs text-slate-400 mt-0.5">동일 납입 조건 · {retirementAge}세 기준</div>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-xs" style={{ minWidth: '480px' }}>
+                <table className="w-full text-xs" style={{ minWidth: '340px' }}>
                   <thead>
                     <tr className="border-b border-slate-100 bg-slate-50">
-                      <th className="text-left px-4 py-2.5 font-medium text-slate-500">구성</th>
-                      <th className="text-right px-3 py-2.5 font-medium text-slate-500">세액공제 누적</th>
-                      <th className="text-right px-3 py-2.5 font-medium text-slate-500">절세 계좌 잔액</th>
-                      <th className="text-right px-4 py-2.5 font-medium text-slate-500">일반 대비 이득</th>
+                      <th className="text-left px-3 py-2.5 font-medium text-slate-500">구성</th>
+                      <th className="text-right px-2 sm:px-3 py-2.5 font-medium text-slate-500 whitespace-nowrap">
+                        <span className="hidden sm:inline">세액공제 누적</span>
+                        <span className="sm:hidden">세액공제</span>
+                      </th>
+                      <th className="text-right px-2 sm:px-3 py-2.5 font-medium text-slate-500 whitespace-nowrap">
+                        <span className="hidden sm:inline">절세 계좌 잔액</span>
+                        <span className="sm:hidden">잔액</span>
+                      </th>
+                      <th className="text-right px-2 sm:px-4 py-2.5 font-medium text-slate-500 whitespace-nowrap">
+                        <span className="hidden sm:inline">일반 대비 이득</span>
+                        <span className="sm:hidden">절세이득</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     <tr className="bg-blue-50">
-                      <td className="px-4 py-3">
+                      <td className="px-3 py-2.5">
                         <div className="font-semibold text-blue-700">내 포트폴리오</div>
                         <div className="text-slate-400 mt-0.5 leading-tight">
                           {[
@@ -315,13 +324,13 @@ export default function SimKPage() {
                           })}
                         </div>
                       </td>
-                      <td className="px-3 py-3 text-right font-medium text-blue-600">
+                      <td className="px-2 sm:px-3 py-2.5 text-right font-medium text-blue-600 whitespace-nowrap">
                         {primary ? fmtKRW(primary.totalTaxCredit) : '-'}
                       </td>
-                      <td className="px-3 py-3 text-right font-semibold text-slate-800">
+                      <td className="px-2 sm:px-3 py-2.5 text-right font-semibold text-slate-800 whitespace-nowrap">
                         {primary ? fmtKRW(primary.finalBalance) : '-'}
                       </td>
-                      <td className={`px-4 py-3 text-right font-semibold ${
+                      <td className={`px-2 sm:px-4 py-2.5 text-right font-semibold whitespace-nowrap ${
                         primary && primary.taxAdvantage >= 0 ? 'text-green-600' : 'text-red-500'
                       }`}>
                         {primary
@@ -334,21 +343,22 @@ export default function SimKPage() {
                       const simkYieldPct = ((SCENARIO_YIELD[simkMode]?.[ticker] ?? ETF_DATA[ticker].divYield / 100) * 100).toFixed(1)
                       return (
                       <tr key={ticker} className="hover:bg-slate-50">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full flex-shrink-0"
                               style={{ background: tickerColors[ticker] }} />
-                            <span className="font-semibold text-slate-700">{ticker} 100%</span>
-                            <span className="text-slate-400">배당 {simkYieldPct}% / CAGR {ETF_DATA[ticker].priceCAGR}%</span>
+                            <span className="font-semibold text-slate-700">{ticker}</span>
+                            <span className="text-slate-400 hidden sm:inline">배당 {simkYieldPct}% / CAGR {ETF_DATA[ticker].priceCAGR}%</span>
+                            <span className="text-slate-400 sm:hidden">{ETF_DATA[ticker].priceCAGR}%</span>
                           </div>
                         </td>
-                        <td className="px-3 py-3 text-right font-medium text-blue-600">
+                        <td className="px-2 sm:px-3 py-2.5 text-right font-medium text-blue-600 whitespace-nowrap">
                           {fmtKRW(result.totalTaxCredit)}
                         </td>
-                        <td className="px-3 py-3 text-right font-semibold text-slate-800">
+                        <td className="px-2 sm:px-3 py-2.5 text-right font-semibold text-slate-800 whitespace-nowrap">
                           {fmtKRW(result.finalBalance)}
                         </td>
-                        <td className={`px-4 py-3 text-right font-semibold ${
+                        <td className={`px-2 sm:px-4 py-2.5 text-right font-semibold whitespace-nowrap ${
                           result.taxAdvantage >= 0 ? 'text-green-600' : 'text-red-500'
                         }`}>
                           {result.taxAdvantage >= 0 ? '+' : ''}{fmtKRW(result.taxAdvantage)}
@@ -361,19 +371,19 @@ export default function SimKPage() {
             </div>
 
             {/* 비교 차트 */}
-            <div className="card p-5">
+            <div className="card p-3 sm:p-5">
               <div className="flex items-center justify-between mb-3">
                 <div>
                   <h2 className="text-sm font-semibold text-slate-700">절세 계좌 vs 일반 계좌 비교</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">일반 계좌: 배당 15.4% 원천징수 · 매도 시 양도세 22% 적용</p>
+                  <p className="text-xs text-slate-400 mt-0.5 hidden sm:block">일반 계좌: 배당 15.4% 원천징수 · 매도 시 양도세 22% 적용</p>
                 </div>
                 <ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={activeTickers} useSimkYield />
               </div>
-              <ResponsiveContainer width="100%" height={260}>
-                <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    interval={Math.max(0, Math.floor(years / 6) - 1)} />
+                  <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }}
+                    interval={Math.max(1, Math.floor(years / 5))} />
                   <YAxis tickFormatter={v => fmt(v * 1e4)} tick={{ fontSize: 11, fill: '#94a3b8' }} />
                   <Tooltip
                     formatter={(v: number, name: string) => [fmt(v * 1e4) + '원', name]}
@@ -506,7 +516,7 @@ function AccountCard({
   const unit   = mode === 'monthly' ? '만원/월' : '만원/년'
 
   return (
-    <div className="card p-4 space-y-3">
+    <div className="card p-3 sm:p-4 space-y-3">
       <div className="flex items-center justify-between">
         <span className={`text-sm font-semibold ${colorMap[color]}`}>{label}</span>
         <span className="text-xs text-slate-400">max {mode === 'monthly' ? `${monthlyMax}만원/월` : `${annualMax}만원/년`}</span>
@@ -655,10 +665,10 @@ function StatCard({ label, value, color, sub, warn }: {
     blue: 'text-blue-600', green: 'text-green-600', amber: 'text-amber-600',
   }
   return (
-    <div className={`card p-3 ${warn ? 'border-orange-200' : ''}`}>
-      <div className="text-xs text-slate-500 mb-1 truncate">{label}</div>
-      <div className={`text-base font-bold ${color ? colors[color] : 'text-slate-800'}`}>{value}</div>
-      {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
+    <div className={`card p-2.5 sm:p-3 ${warn ? 'border-orange-200' : ''}`}>
+      <div className="text-[10px] sm:text-xs text-slate-500 mb-0.5 sm:mb-1 leading-tight">{label}</div>
+      <div className={`text-sm sm:text-base font-bold ${color ? colors[color] : 'text-slate-800'}`}>{value}</div>
+      {sub && <div className="text-[10px] sm:text-xs text-slate-400 mt-0.5 leading-tight">{sub}</div>}
     </div>
   )
 }
