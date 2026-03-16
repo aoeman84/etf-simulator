@@ -545,8 +545,8 @@ function AccountCard({
                     type="range" min={0} max={100} step={5} value={pct}
                     disabled={isAuto}
                     onChange={e => setAllocPct(ticker, Number(e.target.value))}
-                    className={`flex-1 ${isAuto ? 'opacity-40 cursor-not-allowed' : ''}`}
-                    style={{ accentColor: TICKER_COLOR[ticker] ?? '#2563eb' }}
+                    className={`flex-1 ${isAuto ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    style={{ accentColor: isAuto ? '#c4b5fd' : (TICKER_COLOR[ticker] ?? '#2563eb') }}
                   />
                   <PctInput value={pct} onChange={v => setAllocPct(ticker, v)} disabled={isAuto} />
                 </div>
@@ -621,7 +621,7 @@ function PctInput({ value, onChange, disabled }: { value: number; onChange: (v: 
         }}
         className={`w-12 text-right border rounded-lg px-1.5 py-1 text-xs font-semibold outline-none ${
           disabled
-            ? 'border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed'
+            ? 'border-purple-200 bg-purple-50 text-purple-400 cursor-not-allowed opacity-70'
             : 'border-slate-200 text-slate-700 focus:ring-1 focus:ring-blue-400'
         }`}
         inputMode="numeric"
