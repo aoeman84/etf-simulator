@@ -19,7 +19,7 @@ export interface SimKParams {
   irp: MonthlyAccount | AnnualAccount
   taxCreditRate: number
   startAge: number
-  currentAge: number  // 현재 나이 (테이블 강조 표시용)
+  currentAge?: number  // 현재 나이 (테이블 강조 표시용)
   retirementAge: number
   reinvestRefund: boolean
   scenario?: { priceCAGRAdj: number; divGrowthAdj: number; mode: string }
