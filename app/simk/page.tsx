@@ -481,25 +481,21 @@ function AccountCard({
   }
 
   function setAllocPct(ticker: string, pct: number) {
+    if (ticker === 'QQQ') return // QQQ는 자동 계산, 직접 변경 불가
     setState(prev => {
-      const clamped = Math.max(0, Math.min(100, pct))
-      const others = prev.etfAlloc.filter(a => a.ticker !== ticker)
-      const othersSum = others.reduce((s, a) => s + a.pct, 0)
-      const remaining = 100 - clamped
-      const newOthers = othersSum > 0
-        ? others.map(a => ({ ...a, pct: Math.round(a.pct / othersSum * remaining) }))
-        : others.map(a => ({ ...a, pct: Math.round(remaining / others.length) }))
-      // 반올림 오차 보정: 첫 번째 other에 나머지 흡수
-      const newOthersSum = newOthers.reduce((s, a) => s + a.pct, 0)
-      const diff = remaining - newOthersSum
-      if (diff !== 0 && newOthers.length > 0) newOthers[0].pct += diff
+      const schdPct = ticker === 'SCHD' ? pct : (prev.etfAlloc.find(a => a.ticker === 'SCHD')?.pct ?? 0)
+      const vooPct  = ticker === 'VOO'  ? pct : (prev.etfAlloc.find(a => a.ticker === 'VOO')?.pct  ?? 0)
+      const clampedSchd = Math.max(0, Math.min(100, schdPct))
+      const clampedVoo  = Math.max(0, Math.min(100 - clampedSchd, vooPct))
+      const qqqPct = Math.max(0, 100 - clampedSchd - clampedVoo)
       return {
         ...prev,
-        etfAlloc: prev.etfAlloc.map(a =>
-          a.ticker === ticker
-            ? { ...a, pct: clamped }
-            : newOthers.find(o => o.ticker === a.ticker)!
-        ),
+        etfAlloc: prev.etfAlloc.map(a => {
+          if (a.ticker === 'SCHD') return { ...a, pct: clampedSchd }
+          if (a.ticker === 'VOO')  return { ...a, pct: clampedVoo }
+          if (a.ticker === 'QQQ')  return { ...a, pct: qqqPct }
+          return a
+        }),
       }
     })
   }
@@ -539,18 +535,24 @@ function AccountCard({
 
         {expanded && (
           <div className="mt-2 space-y-1.5">
-            {state.etfAlloc.map(({ ticker, pct }) => (
-              <div key={ticker} className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tickerColors[ticker] }} />
-                <span className="text-xs font-medium text-slate-600 w-10 flex-shrink-0">{ticker}</span>
-                <input
-                  type="range" min={0} max={100} step={5} value={pct}
-                  onChange={e => setAllocPct(ticker, Number(e.target.value))}
-                  className="flex-1" style={{ accentColor: TICKER_COLOR[ticker] ?? '#2563eb' }}
-                />
-                <PctInput value={pct} onChange={v => setAllocPct(ticker, v)} />
-              </div>
-            ))}
+            {state.etfAlloc.map(({ ticker, pct }) => {
+              const isAuto = ticker === 'QQQ'
+              return (
+                <div key={ticker} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tickerColors[ticker] }} />
+                  <span className={`text-xs font-medium w-10 flex-shrink-0 ${isAuto ? 'text-slate-400' : 'text-slate-600'}`}>{ticker}</span>
+                  <input
+                    type="range" min={0} max={100} step={5} value={pct}
+                    disabled={isAuto}
+                    onChange={e => setAllocPct(ticker, Number(e.target.value))}
+                    className={`flex-1 ${isAuto ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    style={{ accentColor: TICKER_COLOR[ticker] ?? '#2563eb' }}
+                  />
+                  <PctInput value={pct} onChange={v => setAllocPct(ticker, v)} disabled={isAuto} />
+                </div>
+              )
+            })}
+            <div className="text-xs text-slate-400 pt-0.5">QQQ = 100 − SCHD − VOO (자동)</div>
           </div>
         )}
       </div>
@@ -597,7 +599,7 @@ function AmountInput({ value, min, max, step, unit, accentColor, onChange }: {
   )
 }
 
-function PctInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+function PctInput({ value, onChange, disabled }: { value: number; onChange: (v: number) => void; disabled?: boolean }) {
   const [inputVal, setInputVal] = useState(String(value))
   useMemo(() => setInputVal(String(value)), [value])
 
@@ -605,6 +607,7 @@ function PctInput({ value, onChange }: { value: number; onChange: (v: number) =>
     <div className="flex items-center gap-0.5 flex-shrink-0">
       <input
         type="number" min={0} max={100} step={5} value={inputVal}
+        disabled={disabled}
         onChange={e => {
           setInputVal(e.target.value)
           const n = parseInt(e.target.value, 10)
@@ -616,7 +619,11 @@ function PctInput({ value, onChange }: { value: number; onChange: (v: number) =>
           setInputVal(String(c))
           onChange(c)
         }}
-        className="w-12 text-right border border-slate-200 rounded-lg px-1.5 py-1 text-xs font-semibold text-slate-700 outline-none focus:ring-1 focus:ring-blue-400"
+        className={`w-12 text-right border rounded-lg px-1.5 py-1 text-xs font-semibold outline-none ${
+          disabled
+            ? 'border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed'
+            : 'border-slate-200 text-slate-700 focus:ring-1 focus:ring-blue-400'
+        }`}
         inputMode="numeric"
       />
       <span className="text-xs text-slate-400">%</span>
