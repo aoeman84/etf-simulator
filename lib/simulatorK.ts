@@ -270,8 +270,9 @@ export function simulateK(params: SimKParams): SimKResult {
   const normalCapGainsTax  = normalGain > 2_500_000 ? (normalGain - 2_500_000) * 0.22 : 0
   const normalAfterTax     = normalFinalBalance - normalCapGainsTax
 
-  const pTaxRate       = pensionTaxRate(retirementAge)
-  const monthlyPension = (finalBalance / 20 * (1 - pTaxRate)) / 12
+  const pTaxRate            = pensionTaxRate(retirementAge)
+  const monthlyPension      = (finalBalance / 20 * (1 - pTaxRate)) / 12
+  const finalAfterPensionTax = finalBalance * (1 - pTaxRate)
 
   return {
     rows,
@@ -279,7 +280,7 @@ export function simulateK(params: SimKParams): SimKResult {
     finalBalance,
     normalFinalBalance: normalAfterTax,
     totalTaxCredit: lastRow?.cumulativeTaxCredit ?? 0,
-    taxAdvantage: finalBalance - normalAfterTax,
+    taxAdvantage: finalAfterPensionTax - normalAfterTax,
     monthlyPension,
     pensionTaxRate: pTaxRate,
   }

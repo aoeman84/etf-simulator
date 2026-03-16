@@ -80,6 +80,7 @@ export default function SimKPage() {
   const [retirementAge, setRetirementAge] = usePersistedState<number>('simk_retirementAge', 65)
   const [reinvestRefund, setReinvestRefund] = usePersistedState<boolean>('simk_reinvest', false)
   const [scenario, setScenario] = usePersistedState<ScenarioSettings>('simk_scenario', DEFAULT_SCENARIO)
+  const [taxWarningOpen, setTaxWarningOpen] = useState(false)
 
   const isaValid     = allocSum(isaState.etfAlloc) === 100
   const pensionValid = allocSum(pensionState.etfAlloc) === 100
@@ -258,7 +259,7 @@ export default function SimKPage() {
                     ? `+${fmtKRW(primary.taxAdvantage)}`
                     : fmtKRW(primary.taxAdvantage)}
                   color={primary.taxAdvantage >= 0 ? 'green' : undefined}
-                  sub="세후 양도차익 기준" />
+                  sub="연금세 · 양도세 차감 세후 비교" />
                 <StatCard label="예상 월 연금 수령액"
                   value={fmtKRW(primary.monthlyPension)}
                   color="amber"
@@ -278,6 +279,23 @@ export default function SimKPage() {
                 ⚠️ 연간 수령액이 1,200만원을 초과할 수 있습니다. 종합과세 대상이 될 수 있으니 분산 수령을 검토하세요.
               </div>
             )}
+
+            {/* 2025 외국납부세액 경고 */}
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl overflow-hidden">
+              <button
+                onClick={() => setTaxWarningOpen(v => !v)}
+                className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 transition-colors"
+              >
+                <span>⚠️ 2025년 외국납부세액 공제 변경 안내</span>
+                <span className="text-amber-500 text-xs">{taxWarningOpen ? '▲' : '▼'}</span>
+              </button>
+              {taxWarningOpen && (
+                <div className="px-4 pb-3 text-xs text-amber-700 leading-relaxed border-t border-amber-200 pt-2.5 space-y-1">
+                  <p>2025년부터 해외주식형 ETF(SCHD 등) 분배금에 미국 원천세(15%)가 연금계좌 입금 전 차감됩니다.</p>
+                  <p>배당 비중이 높은 ETF의 복리 효과가 일부 감소할 수 있으며, 정부의 이중과세 보완책은 논의 중입니다.</p>
+                </div>
+              )}
+            </div>
 
             {/* 포트폴리오 vs 단일 ETF 비교 표 */}
             <div className="card overflow-hidden">

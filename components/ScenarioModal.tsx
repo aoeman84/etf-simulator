@@ -167,9 +167,9 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
 
                         // SimK: SCENARIO_YIELD 기반 배당수익률
                         const simkMode = getScenarioMode({ priceCAGRAdj: scenario.priceCAGRAdj, divGrowthAdj: scenario.divGrowthAdj, mode: scenario.mode })
-                        const simkYield = useSimkYield ? (SCENARIO_YIELD[simkMode]?.[ticker] ?? etf.divYield / 100) : null
-                        const baseSimkYield = useSimkYield ? (SCENARIO_YIELD['optimistic']?.[ticker] ?? etf.divYield / 100) : null
-                        const simkYieldChanged = useSimkYield && simkMode !== 'optimistic' && simkYield !== baseSimkYield
+                        const simkYieldVal   = SCENARIO_YIELD[simkMode]?.[ticker] ?? etf.divYield / 100
+                        const baseYieldVal   = SCENARIO_YIELD['optimistic']?.[ticker] ?? etf.divYield / 100
+                        const simkYieldChanged = useSimkYield && simkMode !== 'optimistic' && Math.abs(simkYieldVal - baseYieldVal) > 0.0001
 
                         return (
                           <tr key={ticker} className="hover:bg-slate-50">
@@ -181,14 +181,14 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                               </div>
                             </td>
                             <td className="px-3 py-2 text-right text-amber-600 font-medium">
-                              {useSimkYield && simkYield !== null ? (
+                              {useSimkYield ? (
                                 <>
                                   <span className={simkYieldChanged ? 'text-orange-600 font-semibold' : ''}>
-                                    {(simkYield * 100).toFixed(1)}%
+                                    {(simkYieldVal * 100).toFixed(1)}%
                                   </span>
-                                  {simkYieldChanged && baseSimkYield !== null && (
+                                  {simkYieldChanged && (
                                     <span className="text-slate-400 ml-1 line-through">
-                                      {(baseSimkYield * 100).toFixed(1)}%
+                                      {(baseYieldVal * 100).toFixed(1)}%
                                     </span>
                                   )}
                                 </>
