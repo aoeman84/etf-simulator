@@ -169,7 +169,14 @@ export function simulateK(params: SimKParams): SimKResult {
   const rISA     = weightedReturnRate(isa.etfAlloc,     scenarioMode, scenario)
   const rPension = weightedReturnRate(pension.etfAlloc, scenarioMode, scenario)
   const rIRP     = weightedReturnRate(irp.etfAlloc,     scenarioMode, scenario)
-  const nReturn  = weightedNormalReturnRate(isa.etfAlloc, scenarioMode, scenario)
+
+  // 일반 계좌 수익률: 세 계좌 납입액 비중 가중평균
+  const totalContribBase = annualISA + annualPension + annualIRP
+  const nReturn = totalContribBase > 0
+    ? (weightedNormalReturnRate(isa.etfAlloc,     scenarioMode, scenario) * annualISA +
+       weightedNormalReturnRate(pension.etfAlloc, scenarioMode, scenario) * annualPension +
+       weightedNormalReturnRate(irp.etfAlloc,     scenarioMode, scenario) * annualIRP) / totalContribBase
+    : weightedNormalReturnRate(isa.etfAlloc, scenarioMode, scenario)
 
   const rows: SimKYearRow[] = []
   let isaBalance = 0

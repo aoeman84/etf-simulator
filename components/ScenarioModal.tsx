@@ -115,14 +115,25 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                       {key !== 'custom' && key !== 'pessimistic' && (
                         <div className="flex gap-2 text-xs text-slate-500">
                           <span>주가 {s.priceCAGRAdj >= 0 ? '+' : ''}{s.priceCAGRAdj}%</span>
-                          <span>배당성장 {s.divGrowthAdj >= 0 ? '+' : ''}{s.divGrowthAdj}%</span>
+                          {useSimkYield
+                            ? <span>{key === 'optimistic' ? 'yield 낮음' : 'yield 중간'}</span>
+                            : <span>배당성장 {s.divGrowthAdj >= 0 ? '+' : ''}{s.divGrowthAdj}%</span>
+                          }
                         </div>
                       )}
                       {key === 'pessimistic' && (
-                        <span className="text-xs text-slate-500">역사적 수치의 50%</span>
+                        <span className="text-xs text-slate-500">
+                          역사적 수치의 50%{useSimkYield ? ' · yield 높음' : ''}
+                        </span>
                       )}
                     </div>
-                    <p className="text-xs text-slate-500 leading-relaxed">{s.desc}</p>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      {useSimkYield && key === 'neutral'
+                        ? '금리 정상화 및 ETF 성숙 단계 진입 감안. 주가 CAGR -3% 조정.'
+                        : useSimkYield && key === 'optimistic'
+                          ? '2011~2024 강세장 역사적 수치 그대로 적용. S&P500 장기 평균 성장 지속 가정.'
+                          : s.desc}
+                    </p>
                   </button>
                 ))}
               </div>
@@ -212,7 +223,7 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                 <div className="px-3 py-2 bg-slate-50 border-t border-slate-100">
                   <p className="text-xs text-slate-400">
                     {useSimkYield
-                      ? '배당수익률: 시나리오별 고정 yield (SCENARIO_YIELD 기반) · 취소선 = 낙관 기준값 · 주황색 = 조정됨'
+                      ? '배당수익률은 시나리오별 고정값 · 주황색 = 조정됨'
                       : '취소선 = 낙관 기준값 · 주황색 = 시나리오 조정 적용됨'}
                   </p>
                 </div>
