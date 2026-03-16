@@ -21,8 +21,8 @@ export const SCENARIOS: Record<string, {
   },
   neutral: {
     label: '중립', emoji: '🟡', color: 'amber',
-    desc: '금리 정상화 및 ETF 성숙 단계 진입 감안. 주가 CAGR -2%, 배당성장 -3% 조정.',
-    priceCAGRAdj: -2, divGrowthAdj: -3,
+    desc: '금리 정상화 및 ETF 성숙 단계 진입 감안. 주가 CAGR -3%, 배당성장 -3% 조정.',
+    priceCAGRAdj: -3, divGrowthAdj: -3,
   },
   pessimistic: {
     label: '비관', emoji: '🔴', color: 'red',
