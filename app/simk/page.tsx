@@ -10,7 +10,7 @@ import Footer from '@/components/Footer'
 import ScenarioModal, { ScenarioSettings } from '@/components/ScenarioModal'
 import { fmtKRW, ETF_DATA } from '@/lib/simulator'
 import { usePersistedState } from '@/lib/usePersistedState'
-import { simulateK, SimKYearRow, EtfAlloc, MonthlyAccount, AnnualAccount } from '@/lib/simulatorK'
+import { simulateK, SimKYearRow, EtfAlloc, MonthlyAccount, AnnualAccount, SCENARIO_YIELD, getScenarioMode } from '@/lib/simulatorK'
 
 const DEFAULT_SCENARIO: ScenarioSettings = {
   mode: 'optimistic',
@@ -134,7 +134,7 @@ export default function SimKPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={activeTickers} />} />
+      <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={activeTickers} useSimkYield />} />
 
       <main className="max-w-6xl mx-auto px-4 py-4">
         <div className="mb-4">
@@ -329,14 +329,17 @@ export default function SimKPage() {
                           : '-'}
                       </td>
                     </tr>
-                    {comparisonResults.map(({ ticker, result }) => (
+                    {comparisonResults.map(({ ticker, result }) => {
+                      const simkMode = getScenarioMode({ priceCAGRAdj: scenario.priceCAGRAdj, divGrowthAdj: scenario.divGrowthAdj, mode: scenario.mode })
+                      const simkYieldPct = ((SCENARIO_YIELD[simkMode]?.[ticker] ?? ETF_DATA[ticker].divYield / 100) * 100).toFixed(1)
+                      return (
                       <tr key={ticker} className="hover:bg-slate-50">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <div className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                               style={{ background: tickerColors[ticker] }} />
                             <span className="font-semibold text-slate-700">{ticker} 100%</span>
-                            <span className="text-slate-400">배당 {ETF_DATA[ticker].divYield}% / CAGR {ETF_DATA[ticker].priceCAGR}%</span>
+                            <span className="text-slate-400">배당 {simkYieldPct}% / CAGR {ETF_DATA[ticker].priceCAGR}%</span>
                           </div>
                         </td>
                         <td className="px-3 py-3 text-right font-medium text-blue-600">
@@ -351,7 +354,7 @@ export default function SimKPage() {
                           {result.taxAdvantage >= 0 ? '+' : ''}{fmtKRW(result.taxAdvantage)}
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
               </div>
@@ -364,7 +367,7 @@ export default function SimKPage() {
                   <h2 className="text-sm font-semibold text-slate-700">절세 계좌 vs 일반 계좌 비교</h2>
                   <p className="text-xs text-slate-400 mt-0.5">일반 계좌: 배당 15.4% 원천징수 · 매도 시 양도세 22% 적용</p>
                 </div>
-                <ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={activeTickers} />
+                <ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={activeTickers} useSimkYield />
               </div>
               <ResponsiveContainer width="100%" height={260}>
                 <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>

@@ -72,13 +72,13 @@ function pensionTaxRate(age: number): number {
  * VOO 역사 평균: 1.67%
  * QQQ 역사 평균: 0.62%
  */
-const SCENARIO_YIELD: Record<string, Record<string, number>> = {
+export const SCENARIO_YIELD: Record<string, Record<string, number>> = {
   optimistic: { SCHD: 0.015, VOO: 0.010, QQQ: 0.004, VYM: 0.025, JEPI: 0.060 },
   neutral:    { SCHD: 0.025, VOO: 0.015, QQQ: 0.006, VYM: 0.035, JEPI: 0.075 },
   pessimistic:{ SCHD: 0.035, VOO: 0.020, QQQ: 0.009, VYM: 0.045, JEPI: 0.090 },
 }
 
-function getScenarioMode(scenario?: SimKParams['scenario']): 'optimistic' | 'neutral' | 'pessimistic' {
+export function getScenarioMode(scenario?: SimKParams['scenario']): 'optimistic' | 'neutral' | 'pessimistic' {
   if (!scenario) return 'optimistic'
   if (scenario.mode === 'pessimistic') return 'pessimistic'
   if (scenario.mode === 'neutral' || scenario.priceCAGRAdj < 0) return 'neutral'

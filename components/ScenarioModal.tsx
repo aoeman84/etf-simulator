@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { ETF_DATA, ETF_DATA_UPDATED_AT } from '@/lib/simulator'
+import { SCENARIO_YIELD, getScenarioMode } from '@/lib/simulatorK'
 
 export interface ScenarioSettings {
   mode: 'optimistic' | 'neutral' | 'pessimistic' | 'custom'
@@ -39,6 +40,7 @@ interface Props {
   scenario: ScenarioSettings
   onChange: (s: ScenarioSettings) => void
   selectedTickers?: string[]
+  useSimkYield?: boolean
 }
 
 function getEffectiveCAGR(base: number, adj: number, mode: string): number {
@@ -46,7 +48,7 @@ function getEffectiveCAGR(base: number, adj: number, mode: string): number {
   return Math.max(0, base + adj)
 }
 
-export default function ScenarioModal({ scenario, onChange, selectedTickers }: Props) {
+export default function ScenarioModal({ scenario, onChange, selectedTickers, useSimkYield }: Props) {
   const [open, setOpen] = useState(false)
   const current = SCENARIOS[scenario.mode]
 
@@ -140,7 +142,7 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers }: P
                         <th className="text-left px-3 py-2 text-slate-500 font-medium">ETF</th>
                         <th className="text-right px-3 py-2 text-slate-500 font-medium">배당수익률</th>
                         <th className="text-right px-3 py-2 text-slate-500 font-medium">주가 CAGR</th>
-                        <th className="text-right px-3 py-2 text-slate-500 font-medium">배당성장</th>
+                        {!useSimkYield && <th className="text-right px-3 py-2 text-slate-500 font-medium">배당성장</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
@@ -151,6 +153,13 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers }: P
                         const isAdjusted = scenario.mode !== 'optimistic'
                         const priceChanged = isAdjusted && Math.abs(effPrice - etf.priceCAGR) > 0.01
                         const divChanged = isAdjusted && Math.abs(effDiv - etf.divGrowthCAGR) > 0.01
+
+                        // SimK: SCENARIO_YIELD 기반 배당수익률
+                        const simkMode = getScenarioMode({ priceCAGRAdj: scenario.priceCAGRAdj, divGrowthAdj: scenario.divGrowthAdj, mode: scenario.mode })
+                        const simkYield = useSimkYield ? (SCENARIO_YIELD[simkMode]?.[ticker] ?? etf.divYield / 100) : null
+                        const baseSimkYield = useSimkYield ? (SCENARIO_YIELD['optimistic']?.[ticker] ?? etf.divYield / 100) : null
+                        const simkYieldChanged = useSimkYield && simkMode !== 'optimistic' && simkYield !== baseSimkYield
+
                         return (
                           <tr key={ticker} className="hover:bg-slate-50">
                             <td className="px-3 py-2">
@@ -161,7 +170,20 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers }: P
                               </div>
                             </td>
                             <td className="px-3 py-2 text-right text-amber-600 font-medium">
-                              {etf.divYield}%
+                              {useSimkYield && simkYield !== null ? (
+                                <>
+                                  <span className={simkYieldChanged ? 'text-orange-600 font-semibold' : ''}>
+                                    {(simkYield * 100).toFixed(1)}%
+                                  </span>
+                                  {simkYieldChanged && baseSimkYield !== null && (
+                                    <span className="text-slate-400 ml-1 line-through">
+                                      {(baseSimkYield * 100).toFixed(1)}%
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                `${etf.divYield}%`
+                              )}
                             </td>
                             <td className="px-3 py-2 text-right">
                               <span className={priceChanged ? 'text-orange-600 font-semibold' : 'text-green-600 font-medium'}>
@@ -171,14 +193,16 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers }: P
                                 <span className="text-slate-400 ml-1 line-through">{etf.priceCAGR}%</span>
                               )}
                             </td>
-                            <td className="px-3 py-2 text-right">
-                              <span className={divChanged ? 'text-orange-600 font-semibold' : 'text-blue-600 font-medium'}>
-                                {effDiv.toFixed(1)}%
-                              </span>
-                              {divChanged && (
-                                <span className="text-slate-400 ml-1 line-through">{etf.divGrowthCAGR}%</span>
-                              )}
-                            </td>
+                            {!useSimkYield && (
+                              <td className="px-3 py-2 text-right">
+                                <span className={divChanged ? 'text-orange-600 font-semibold' : 'text-blue-600 font-medium'}>
+                                  {effDiv.toFixed(1)}%
+                                </span>
+                                {divChanged && (
+                                  <span className="text-slate-400 ml-1 line-through">{etf.divGrowthCAGR}%</span>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         )
                       })}
@@ -187,7 +211,9 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers }: P
                 </div>
                 <div className="px-3 py-2 bg-slate-50 border-t border-slate-100">
                   <p className="text-xs text-slate-400">
-                    취소선 = 낙관 기준값 · 주황색 = 시나리오 조정 적용됨
+                    {useSimkYield
+                      ? '배당수익률: 시나리오별 고정 yield (SCENARIO_YIELD 기반) · 취소선 = 낙관 기준값 · 주황색 = 조정됨'
+                      : '취소선 = 낙관 기준값 · 주황색 = 시나리오 조정 적용됨'}
                   </p>
                 </div>
               </div>
