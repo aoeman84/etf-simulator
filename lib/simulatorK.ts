@@ -17,11 +17,11 @@ export interface SimKParams {
   isa: MonthlyAccount | AnnualAccount
   pension: MonthlyAccount | AnnualAccount
   irp: MonthlyAccount | AnnualAccount
-  taxCreditRate: number       // 0.132 or 0.165
-  startAge: number            // 투자 시작 나이
-  currentAge: number          // 현재 나이 (테이블 강조용)
-  retirementAge: number       // 연금 수령 나이
-  reinvestRefund: boolean     // 세액공제 환급금 재투자 여부
+  taxCreditRate: number
+  startAge: number
+  currentAge: number  // 현재 나이 (테이블 강조 표시용)
+  retirementAge: number
+  reinvestRefund: boolean
   scenario?: { priceCAGRAdj: number; divGrowthAdj: number; mode: string }
 }
 
@@ -40,7 +40,6 @@ export interface SimKYearRow {
   isaTransfer: number
   isaTransferCredit: number
   normalBalance: number
-  isMatureYear: boolean
 }
 
 export interface SimKResult {
@@ -54,278 +53,213 @@ export interface SimKResult {
   pensionTaxRate: number
 }
 
-function getPensionTaxRate(age: number): number {
+function pensionTaxRate(age: number): number {
   if (age >= 80) return 0.033
   if (age >= 70) return 0.044
   return 0.055
 }
 
-// 계좌별 ETF 가중평균 파라미터
-interface EtfParams {
-  price: number
-  priceCAGR: number
-  divYield: number
-  divGrowthCAGR: number
-}
-
-function getWeightedEtfParams(
+/**
+ * 절세 계좌 수익률 계산
+ * - priceCAGR: 주가 상승분 (시나리오 반영)
+ * - divYield * 0.5: 분기배당 타이밍 손실 반영 (평균 반기만 재투자)
+ * - divGrowth: 배당성장률 (Sim 탭과 동일하게 연도별 적용)
+ */
+function weightedReturnRate(
   allocs: EtfAlloc[],
+  year: number,
   scenario?: SimKParams['scenario']
-): EtfParams {
-  let price = 0, priceCAGR = 0, divYield = 0, divGrowthCAGR = 0
-  let totalPct = 0
-
+): number {
+  let r = 0
   for (const { ticker, pct } of allocs) {
     if (pct === 0) continue
     const etf = ETF_DATA[ticker]
     if (!etf) continue
 
-    let pc = etf.priceCAGR
-    let dg = etf.divGrowthCAGR
+    let priceCAGR = etf.priceCAGR
+    let divGrowth = etf.divGrowthCAGR / 100
 
     if (scenario) {
       if (scenario.mode === 'pessimistic') {
-        pc = pc * 0.5
-        dg = 0
+        priceCAGR *= 0.5
+        divGrowth = 0
       } else {
-        pc = Math.max(0, pc + scenario.priceCAGRAdj)
-        dg = Math.max(0, dg + scenario.divGrowthAdj)
+        priceCAGR = Math.max(0, priceCAGR + scenario.priceCAGRAdj)
+        divGrowth = Math.max(0, divGrowth + scenario.divGrowthAdj / 100)
       }
     }
 
-    const w = pct / 100
-    price         += etf.price * w
-    priceCAGR     += pc * w
-    divYield      += etf.divYield * w
-    divGrowthCAGR += dg * w
-    totalPct      += w
-  }
+    // 배당성장률 반영: y년차 배당수익률
+    const currentDivYield = etf.divYield / 100 * Math.pow(1 + divGrowth, year - 1)
 
-  if (totalPct === 0) return { price: 1, priceCAGR: 0.085, divYield: 3.4, divGrowthCAGR: 11 }
-
-  return {
-    price:         price / totalPct,
-    priceCAGR:     priceCAGR / totalPct,
-    divYield:      divYield / totalPct,
-    divGrowthCAGR: divGrowthCAGR / totalPct,
+    // divYield * 0.5: 분기배당 타이밍 손실 반영
+    r += (priceCAGR / 100 + currentDivYield * 0.5) * (pct / 100)
   }
+  return r
 }
 
-const FX_RATE = 1500
-const DIV_MONTHS = [3, 6, 9, 12]
-// 배당 원천징수 15% (2025년 이후 현실 반영, 보수적)
-const DIV_TAX_RATE = 0.15
-// 일반계좌 배당세
-const NORMAL_DIV_TAX_RATE = 0.154
+/**
+ * 일반 계좌 수익률 (배당세 15.4% 차감, 배당성장 반영)
+ */
+function weightedNormalReturnRate(
+  allocs: EtfAlloc[],
+  year: number,
+  scenario?: SimKParams['scenario']
+): number {
+  let r = 0
+  for (const { ticker, pct } of allocs) {
+    if (pct === 0) continue
+    const etf = ETF_DATA[ticker]
+    if (!etf) continue
+
+    let priceCAGR = etf.priceCAGR
+    let divGrowth = etf.divGrowthCAGR / 100
+
+    if (scenario) {
+      if (scenario.mode === 'pessimistic') {
+        priceCAGR *= 0.5
+        divGrowth = 0
+      } else {
+        priceCAGR = Math.max(0, priceCAGR + scenario.priceCAGRAdj)
+        divGrowth = Math.max(0, divGrowth + scenario.divGrowthAdj / 100)
+      }
+    }
+
+    const currentDivYield = etf.divYield / 100 * Math.pow(1 + divGrowth, year - 1)
+    r += (priceCAGR / 100 + currentDivYield * 0.5 * (1 - 0.154)) * (pct / 100)
+  }
+  return r
+}
+
+function getAnnualWan(acct: MonthlyAccount | AnnualAccount, mode: 'monthly' | 'annual', cap: number): number {
+  if (mode === 'monthly') {
+    return Math.min((acct as MonthlyAccount).monthlyWan * 12, cap)
+  }
+  return Math.min((acct as AnnualAccount).annualWan, cap)
+}
 
 export function simulateK(params: SimKParams): SimKResult {
-  const {
-    mode, isa, pension, irp,
-    taxCreditRate, startAge, retirementAge,
-    reinvestRefund, scenario,
-  } = params
+  const { mode, isa, pension, irp, taxCreditRate, startAge, currentAge: _currentAge, retirementAge, reinvestRefund, scenario } = params
 
   const years = Math.max(1, retirementAge - startAge)
-
-  // 계좌별 연간 납입금 (만원)
-  const annISAWan     = mode === 'monthly'
-    ? (isa     as MonthlyAccount).monthlyWan * 12
-    : (isa     as AnnualAccount).annualWan
-  const annPenWan     = mode === 'monthly'
-    ? (pension as MonthlyAccount).monthlyWan * 12
-    : (pension as AnnualAccount).annualWan
-  const annIRPWan     = mode === 'monthly'
-    ? (irp     as MonthlyAccount).monthlyWan * 12
-    : (irp     as AnnualAccount).annualWan
-
-  // 세액공제 계산용 한도
-  const penCredited = Math.min(annPenWan * 10000, 6_000_000)
-  const irpCredited = Math.min(annIRPWan * 10000, Math.max(0, 9_000_000 - penCredited))
-  const yearlyCredit = (penCredited + irpCredited) * taxCreditRate
-
-  // ETF 가중평균 파라미터
-  const isaEtf  = getWeightedEtfParams(isa.etfAlloc,     scenario)
-  const penEtf  = getWeightedEtfParams(pension.etfAlloc, scenario)
-  const irpEtf  = getWeightedEtfParams(irp.etfAlloc,     scenario)
-
-  // 일반계좌 비교용 (ISA와 동일 ETF)
-  const normEtf = isaEtf
-
-  // 주식 수 상태
-  let isaShares    = 0, isaCostBasis  = 0
-  let penShares    = 0
-  let irpShares    = 0
-  let normalShares = 0
-
-  let totalContributed = 0
-  let cumulativeTaxCredit = 0
-  let extraPenNextYear = 0
+  const annualISA     = getAnnualWan(isa,     mode, 2000)
+  const annualPension = getAnnualWan(pension, mode, 1500)
+  const annualIRP     = getAnnualWan(irp,     mode, 300)
 
   const rows: SimKYearRow[] = []
+  let isaBalance = 0
+  let pensionBalance = 0
+  let irpBalance = 0
+  let isaCostBasis = 0
+  let cumulativeTaxCredit = 0
+  let totalContributed = 0
+  let normalBalance = 0
+  let extraPensionNextYear = 0
 
   for (let y = 1; y <= years; y++) {
     const age = startAge + y
-    const posInCycle = ((y - 1) % 3) + 1  // 1, 2, 3
-    const isMatureYear = posInCycle === 3
+    const isMatureYear = y % 3 === 0
 
-    // 배당성장 반영 배당 (연도별)
-    const isaDiv1  = isaEtf.price  * (isaEtf.divYield  / 100) * Math.pow(1 + isaEtf.divGrowthCAGR  / 100, y - 1)
-    const penDiv1  = penEtf.price  * (penEtf.divYield  / 100) * Math.pow(1 + penEtf.divGrowthCAGR  / 100, y - 1)
-    const irpDiv1  = irpEtf.price  * (irpEtf.divYield  / 100) * Math.pow(1 + irpEtf.divGrowthCAGR  / 100, y - 1)
-    const normDiv1 = normEtf.price * (normEtf.divYield / 100) * Math.pow(1 + normEtf.divGrowthCAGR / 100, y - 1)
+    // 연도별 수익률 계산 (배당성장률 반영)
+    const rISA     = weightedReturnRate(isa.etfAlloc,     y, scenario)
+    const rPension = weightedReturnRate(pension.etfAlloc, y, scenario)
+    const rIRP     = weightedReturnRate(irp.etfAlloc,     y, scenario)
+    const nReturn  = weightedNormalReturnRate(
+      isa.etfAlloc, y, scenario
+    )
 
-    const isaDivPerPeriod  = isaDiv1  / 4
-    const penDivPerPeriod  = penDiv1  / 4
-    const irpDivPerPeriod  = irpDiv1  / 4
-    const normDivPerPeriod = normDiv1 / 4
+    const isaContrib    = annualISA * 10000
+    const pensionExtra  = reinvestRefund ? extraPensionNextYear : 0
+    const pensionContrib = annualPension * 10000 + pensionExtra
+    const irpContrib    = annualIRP * 10000
 
-    let isaContribYear  = 0
-    let penContribYear  = 0
-    let irpContribYear  = 0
-
-    // 세액공제 환급금 재투자 (옵션)
-    const penExtra = reinvestRefund ? extraPenNextYear : 0
-
-    for (let m = 1; m <= 12; m++) {
-      // 월별 주가
-      const isaPrice  = isaEtf.price  * Math.pow(1 + isaEtf.priceCAGR  / 100, (y - 1) + m / 12)
-      const penPrice  = penEtf.price  * Math.pow(1 + penEtf.priceCAGR  / 100, (y - 1) + m / 12)
-      const irpPrice  = irpEtf.price  * Math.pow(1 + irpEtf.priceCAGR  / 100, (y - 1) + m / 12)
-      const normPrice = normEtf.price * Math.pow(1 + normEtf.priceCAGR / 100, (y - 1) + m / 12)
-
-      // 납입 (연초 일시납: 1월에 모두, 월 적립: 매월)
-      const isaNow  = mode === 'annual' ? (m === 1 && !isMatureYear ? annISAWan * 10000 : 0)
-                                        : (!isMatureYear ? (annISAWan / 12) * 10000 : 0)
-      const penNow  = mode === 'annual' ? (m === 1 ? (annPenWan + (m===1 ? penExtra : 0)) * 10000 : 0)
-                                        : ((annPenWan / 12) * 10000 + (m===1 ? penExtra : 0))
-      const irpNow  = mode === 'annual' ? (m === 1 ? annIRPWan * 10000 : 0)
-                                        : (annIRPWan / 12) * 10000
-      const normNow = mode === 'annual' ? (m === 1 ? (annISAWan + annPenWan + annIRPWan) * 10000 : 0)
-                                        : ((annISAWan + annPenWan + annIRPWan) / 12) * 10000
-
-      if (isaNow > 0) {
-        isaShares    += (isaNow  / FX_RATE) / isaPrice
-        isaCostBasis += isaNow
-        isaContribYear += isaNow
-      }
-      if (penNow > 0) {
-        penShares    += (penNow  / FX_RATE) / penPrice
-        penContribYear += penNow
-      }
-      if (irpNow > 0) {
-        irpShares    += (irpNow  / FX_RATE) / irpPrice
-        irpContribYear += irpNow
-      }
-      if (normNow > 0) {
-        normalShares += (normNow / FX_RATE) / normPrice
-      }
-
-      // 분기배당
-      if (DIV_MONTHS.includes(m)) {
-        // 절세계좌: 배당 원천징수 15% (보수적)
-        const isaDiv  = isaShares  * isaDivPerPeriod  * FX_RATE * (1 - DIV_TAX_RATE)
-        const penDiv  = penShares  * penDivPerPeriod  * FX_RATE * (1 - DIV_TAX_RATE)
-        const irpDiv  = irpShares  * irpDivPerPeriod  * FX_RATE * (1 - DIV_TAX_RATE)
-        const normDiv = normalShares * normDivPerPeriod * FX_RATE * (1 - NORMAL_DIV_TAX_RATE)
-
-        // DRIP 재투자
-        isaShares    += (isaDiv  / FX_RATE) / isaPrice
-        penShares    += (penDiv  / FX_RATE) / penPrice
-        irpShares    += (irpDiv  / FX_RATE) / irpPrice
-        normalShares += (normDiv / FX_RATE) / normPrice
-      }
+    // ✅ ISA 연초 납입 (만기 해지 연도는 만기 처리 후 별도 납입)
+    if (!isMatureYear) {
+      isaBalance   += isaContrib
+      isaCostBasis += isaContrib
     }
+    totalContributed += isaContrib + annualPension * 10000 + irpContrib
 
-    // 연말 주가
-    const isaEndPrice  = isaEtf.price  * Math.pow(1 + isaEtf.priceCAGR  / 100, y)
-    const penEndPrice  = penEtf.price  * Math.pow(1 + penEtf.priceCAGR  / 100, y)
-    const irpEndPrice  = irpEtf.price  * Math.pow(1 + irpEtf.priceCAGR  / 100, y)
-    const normEndPrice = normEtf.price * Math.pow(1 + normEtf.priceCAGR / 100, y)
+    // 수익 적용 (연초 납입 → 1년 전체 복리)
+    isaBalance     *= (1 + rISA)
+    pensionBalance *= (1 + rPension)
+    irpBalance     *= (1 + rIRP)
 
-    totalContributed += isaContribYear + (annPenWan + (reinvestRefund ? extraPenNextYear/10000 : 0)) * 10000 + annIRPWan * 10000
-
-    // 세액공제
-    cumulativeTaxCredit += yearlyCredit
-    extraPenNextYear = yearlyCredit
+    // 연금저축·IRP 납입은 연말 처리 (당해연도 수익 없음)
+    pensionBalance += pensionContrib
+    irpBalance     += irpContrib
 
     let isaTransfer = 0
     let isaTransferCredit = 0
 
-    // ISA 만기 처리
     if (isMatureYear) {
-      const isaBalKRW = isaShares * isaEndPrice * FX_RATE
+      // 만기 해지
+      const isaGain     = Math.max(0, isaBalance - isaCostBasis)
+      const taxFreeGain = Math.min(isaGain, 2_000_000)
+      const taxableGain = Math.max(0, isaGain - taxFreeGain)
+      const isaTax      = taxableGain * 0.099
+      const isaAfterTax = isaBalance - isaTax
 
-      // ✅ 연금저축 이체: 9.9% 없음! 전액 이체
-      // (현금 인출이 아닌 연금저축 이체이므로 ISA 분리과세 미적용)
-      isaTransfer = isaBalKRW
-      isaTransferCredit = Math.min(isaBalKRW * 0.1, 3_000_000)
+      isaTransfer       = isaAfterTax
+      isaTransferCredit = Math.min(isaAfterTax * 0.1, 3_000_000)
+
+      pensionBalance    += isaAfterTax
       cumulativeTaxCredit += isaTransferCredit
 
-      // ISA → 연금저축 이체 (KRW → 주식 재매수)
-      penShares += (isaBalKRW / FX_RATE) / penEndPrice
+      isaBalance   = 0
+      isaCostBasis = 0
 
-      // ISA 리셋 후 4번째 납입 (연초 일시납: 이미 연초에 납입 처리됨)
-      // 만기 당해 연도의 새 ISA 납입
-      const newIsaContrib = annISAWan * 10000
-      const newIsaPrice = isaEtf.price * Math.pow(1 + isaEtf.priceCAGR / 100, y - 1 + 1/12)
-      isaShares    = (newIsaContrib / FX_RATE) / newIsaPrice
-      isaCostBasis = newIsaContrib
-      totalContributed += newIsaContrib  // 4번째 납입 원금
+      // ✅ 4번째 납입: 만기 당해 연초에 새 ISA 납입 → 1년 수익 적용
+      // (ISA는 연초에 납입하므로 만기 해지와 같은 해에 이미 수익이 붙어 있음)
+      isaBalance   += isaContrib * (1 + rISA)
+      isaCostBasis += isaContrib
+      totalContributed += isaContrib  // 4번째 납입 원금 추가
     }
 
-    // 연말 잔액 계산
-    const isaBalance  = isaShares  * isaEndPrice  * FX_RATE
-    const penBalance  = penShares  * penEndPrice  * FX_RATE
-    const irpBalance  = irpShares  * irpEndPrice  * FX_RATE
-    const normalBalance = normalShares * normEndPrice * FX_RATE
-    const totalBalance = isaBalance + penBalance + irpBalance
+    const pensionCredited = Math.min(annualPension * 10000, 6_000_000)
+    const irpCredited     = Math.min(irpContrib, Math.max(0, 9_000_000 - pensionCredited))
+    const yearlyTaxCredit = (pensionCredited + irpCredited) * taxCreditRate + isaTransferCredit
+
+    cumulativeTaxCredit  += (pensionCredited + irpCredited) * taxCreditRate
+    extraPensionNextYear  = (pensionCredited + irpCredited) * taxCreditRate
+
+    normalBalance += (annualISA + annualPension + annualIRP) * 10000
+    normalBalance *= (1 + nReturn)
+
+    const totalBalance = isaBalance + pensionBalance + irpBalance
 
     rows.push({
-      year: y,
-      age,
-      isaBalance,
-      pensionBalance: penBalance,
-      irpBalance,
-      totalBalance,
-      isaContributed:    isaContribYear,
-      pensionContributed: (annPenWan + (reinvestRefund ? extraPenNextYear/10000 : 0)) * 10000,
-      irpContributed:    annIRPWan * 10000,
-      taxCreditThisYear: yearlyCredit + isaTransferCredit,
+      year: y, age,
+      isaBalance, pensionBalance, irpBalance, totalBalance,
+      isaContributed:    isaContrib,
+      pensionContributed: pensionContrib,
+      irpContributed:    irpContrib,
+      taxCreditThisYear: yearlyTaxCredit,
       cumulativeTaxCredit,
-      isaTransfer,
-      isaTransferCredit,
+      isaTransfer, isaTransferCredit,
       normalBalance,
-      isMatureYear,
     })
   }
 
   const lastRow = rows[rows.length - 1]
-  const finalBalance = lastRow?.totalBalance ?? 0
+  const finalBalance       = lastRow?.totalBalance ?? 0
+  const normalFinalBalance = lastRow?.normalBalance ?? 0
+  const normalGain         = normalFinalBalance - totalContributed
+  const normalCapGainsTax  = normalGain > 2_500_000 ? (normalGain - 2_500_000) * 0.22 : 0
+  const normalAfterTax     = normalFinalBalance - normalCapGainsTax
 
-  // 연금 수령 시 세후 계산
-  const pTaxRate = getPensionTaxRate(retirementAge)
-  const penFinalAfterTax = (lastRow?.pensionBalance ?? 0) * (1 - pTaxRate)
-  const irpFinalAfterTax = (lastRow?.irpBalance     ?? 0) * (1 - pTaxRate)
-  const isaFinal         = lastRow?.isaBalance ?? 0
-  const finalAfterPensionTax = isaFinal + penFinalAfterTax + irpFinalAfterTax
-
-  // 일반계좌 세후
-  const normalFinal   = lastRow?.normalBalance ?? 0
-  const normalGain    = normalFinal - totalContributed
-  const normalCapTax  = normalGain > 2_500_000 ? (normalGain - 2_500_000) * 0.22 : 0
-  const normalAfterTax = normalFinal - normalCapTax
-
-  // 월 연금 (20년 분할 수령 가정)
-  const monthlyPension = (finalAfterPensionTax / 20 / 12)
+  const pTaxRate       = pensionTaxRate(retirementAge)
+  const monthlyPension = (finalBalance / 20 * (1 - pTaxRate)) / 12
 
   return {
     rows,
     totalContributed,
-    finalBalance: finalAfterPensionTax,
+    finalBalance,
     normalFinalBalance: normalAfterTax,
     totalTaxCredit: lastRow?.cumulativeTaxCredit ?? 0,
-    taxAdvantage: finalAfterPensionTax - normalAfterTax,
+    taxAdvantage: finalBalance - normalAfterTax,
     monthlyPension,
     pensionTaxRate: pTaxRate,
   }
 }
+
