@@ -14,7 +14,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     price: 30.80,
     divYield: 3.4,
     divGrowthCAGR: 11.0,
-    priceCAGR: 8.5,
+    priceCAGR: 8.0,
     color: '#2563eb',
   },
   VOO: {
@@ -23,7 +23,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     price: 513.0,
     divYield: 1.3,
     divGrowthCAGR: 6.0,
-    priceCAGR: 13.5,
+    priceCAGR: 9.0,
     color: '#16a34a',
   },
   QQQ: {
@@ -32,7 +32,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     price: 468.0,
     divYield: 0.6,
     divGrowthCAGR: 8.0,
-    priceCAGR: 17.2,
+    priceCAGR: 12.0,
     color: '#9333ea',
   },
   VYM: {
@@ -41,7 +41,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     price: 125.0,
     divYield: 2.9,
     divGrowthCAGR: 7.0,
-    priceCAGR: 9.2,
+    priceCAGR: 8.0,
     color: '#ea580c',
   },
   JEPI: {
@@ -50,7 +50,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     price: 57.0,
     divYield: 7.5,
     divGrowthCAGR: 2.0,
-    priceCAGR: 5.5,
+    priceCAGR: 5.0,
     color: '#0891b2',
   },
 }
