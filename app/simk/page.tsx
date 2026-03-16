@@ -478,10 +478,22 @@ function AccountCard({
   }
 
   function setAllocPct(ticker: string, pct: number) {
-    setState(prev => ({
-      ...prev,
-      etfAlloc: prev.etfAlloc.map(a => a.ticker === ticker ? { ...a, pct: Math.max(0, Math.min(100, pct)) } : a),
-    }))
+    setState(prev => {
+      const clamped = Math.max(0, Math.min(100, pct))
+      const absorber = ticker === 'QQQ' ? 'VOO' : 'QQQ'
+      const fixed = prev.etfAlloc
+        .filter(a => a.ticker !== ticker && a.ticker !== absorber)
+        .reduce((s, a) => s + a.pct, 0)
+      const absorberPct = Math.max(0, 100 - clamped - fixed)
+      return {
+        ...prev,
+        etfAlloc: prev.etfAlloc.map(a => {
+          if (a.ticker === ticker)   return { ...a, pct: clamped }
+          if (a.ticker === absorber) return { ...a, pct: absorberPct }
+          return a
+        }),
+      }
+    })
   }
 
   const amount = mode === 'monthly' ? state.monthly : state.annual
