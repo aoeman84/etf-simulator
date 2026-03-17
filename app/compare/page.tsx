@@ -97,7 +97,7 @@ export default function ComparePage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} />} />
+      <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} useSimkYield={false} />} />
       <main className="max-w-6xl mx-auto px-4 py-4">
         {/* ✅ grid-cols-3으로 변경 — Sim/Sim2와 동일한 비율 */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -188,7 +188,7 @@ export default function ComparePage() {
                 <h2 className="text-sm font-medium text-slate-500">포트폴리오 성장 비교</h2>
                 <div className="flex items-center gap-2">
                   {/* ✅ 시나리오 배지 → ScenarioModal로 교체 */}
-                  <ScenarioModal scenario={scenario} onChange={setScenario} />
+                  <ScenarioModal scenario={scenario} onChange={setScenario} useSimkYield={false} />
                   {/* 공유 버튼 */}
                   <button
                     onClick={shareResult}

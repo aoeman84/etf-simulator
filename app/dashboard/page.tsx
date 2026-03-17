@@ -101,7 +101,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} />} />
+      <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} useSimkYield={false} />} />
       <InstallPrompt />
       {showToast && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2">
@@ -258,7 +258,7 @@ export default function DashboardPage() {
             <div className="card p-5">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-medium text-slate-500">연도별 자산 성장</h2>
-                <ScenarioModal scenario={scenario} onChange={setScenario} />
+                <ScenarioModal scenario={scenario} onChange={setScenario} useSimkYield={false} />
               </div>
               <SimChart results={results} taxEnabled={tax.enabled} />
             </div>

@@ -11,7 +11,7 @@ export interface ScenarioSettings {
 }
 
 export const SCENARIOS: Record<string, {
-  label: string; emoji: string; desc: string
+  label: string; emoji: string; desc: string; descSimk?: string
   priceCAGRAdj: number; divGrowthAdj: number; color: string
 }> = {
   optimistic: {
@@ -22,16 +22,19 @@ export const SCENARIOS: Record<string, {
   neutral: {
     label: '중립', emoji: '🟡', color: 'amber',
     desc: '금리 정상화 및 ETF 성숙 단계 진입 감안. 주가 CAGR -3%, 배당성장 -3% 조정.',
+    descSimk: '금리 정상화 및 ETF 성숙 단계 진입 감안. 주가 CAGR -3% 조정.',
     priceCAGRAdj: -3, divGrowthAdj: -3,
   },
   pessimistic: {
     label: '비관', emoji: '🔴', color: 'red',
     desc: '고금리 장기화 + 경기침체 시나리오. 주가 CAGR 역사적 절반, 배당성장 0% 가정.',
+    descSimk: '고금리 장기화 + 경기침체 시나리오. 주가 CAGR 역사적 절반 적용.',
     priceCAGRAdj: -999, divGrowthAdj: -999,
   },
   custom: {
     label: '직접설정', emoji: '⚙️', color: 'blue',
     desc: '주가 CAGR과 배당성장률을 직접 조정하세요.',
+    descSimk: '주가 CAGR을 직접 조정하세요.',
     priceCAGRAdj: 0, divGrowthAdj: 0,
   },
 }
@@ -128,11 +131,7 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                       )}
                     </div>
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      {useSimkYield && key === 'neutral'
-                        ? '금리 정상화 및 ETF 성숙 단계 진입 감안. 주가 CAGR -3% 조정.'
-                        : useSimkYield && key === 'optimistic'
-                          ? '2011~2024 강세장 역사적 수치 그대로 적용. S&P500 장기 평균 성장 지속 가정.'
-                          : s.desc}
+                      {useSimkYield ? (s.descSimk ?? s.desc) : s.desc}
                     </p>
                   </button>
                 ))}
