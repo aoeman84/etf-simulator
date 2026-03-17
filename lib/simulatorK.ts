@@ -40,7 +40,6 @@ export interface SimKYearRow {
   isaTransfer: number
   isaTransferCredit: number
   normalBalance: number
-  taxCreditReinvestedBalance: number
 }
 
 export interface SimKResult {
@@ -188,7 +187,6 @@ export function simulateK(params: SimKParams): SimKResult {
   let totalContributed = 0
   let normalBalance = 0
   let extraPensionNextYear = 0
-  let taxCreditPortfolio = 0
 
   for (let y = 1; y <= years; y++) {
     const age = startAge + y
@@ -250,10 +248,6 @@ export function simulateK(params: SimKParams): SimKResult {
     normalBalance += (annualISA + annualPension + annualIRP) * 10000
     normalBalance *= (1 + nReturn)
 
-    // 세액공제 환급금을 일반계좌 수익률로 재투자 (연말 입금 → 당해 미성장)
-    taxCreditPortfolio *= (1 + nReturn)
-    taxCreditPortfolio += yearlyTaxCredit
-
     const totalBalance = isaBalance + pensionBalance + irpBalance
 
     rows.push({
@@ -266,7 +260,6 @@ export function simulateK(params: SimKParams): SimKResult {
       cumulativeTaxCredit,
       isaTransfer, isaTransferCredit,
       normalBalance,
-      taxCreditReinvestedBalance: taxCreditPortfolio,
     })
   }
 
