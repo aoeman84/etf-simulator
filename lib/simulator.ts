@@ -50,7 +50,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     price: 57.0,
     divYield: 7.5,
     divGrowthCAGR: 2.0,
-    priceCAGR: 5.0,
+    priceCAGR: 3.0,
     color: '#0891b2',
   },
 }

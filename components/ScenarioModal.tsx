@@ -313,6 +313,14 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                 <p className="text-xs text-slate-400 mt-1">한국 장기 평균 인플레이션 약 2.5%</p>
               </div>
 
+              {/* 면책 문구 */}
+              <div className="border-t border-slate-100 pt-4 mt-4 space-y-1">
+                <p className="text-xs font-semibold text-slate-500">📊 수치 근거 안내</p>
+                <p className="text-xs text-slate-400">낙관: 2011~2024 역사적 실적 기준 (강세장 재현 가정)</p>
+                <p className="text-xs text-slate-400">중립: VOO 6%, QQQ 9% 수준 — Goldman Sachs 장기 전망(6.5%)과 근접</p>
+                <p className="text-xs text-slate-400">비관: VOO 4.5% 수준 — Vanguard 10년 전망(2.8~4.8%)과 근접</p>
+                <p className="text-xs text-slate-400 mt-1">과거 수익률이 미래를 보장하지 않습니다.</p>
+              </div>
 
             </div>
           </div>
