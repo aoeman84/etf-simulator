@@ -28,7 +28,7 @@ export default function ComparePage() {
   const [monthly, setMonthly] = usePersistedState<number>('compare_monthly', 500)
   const [years, setYears] = usePersistedState<number>('compare_years', 10)
   const [drip, setDrip] = usePersistedState<boolean>('compare_drip', true)
-  const [scenario, setScenario] = usePersistedState<ScenarioSettings>('compare_scenario', DEFAULT_SCENARIO)
+  const [scenario, setScenario] = usePersistedState<ScenarioSettings>('scenario', DEFAULT_SCENARIO)
   const [fxRate, setFxRate] = useState(1350)
   const [fxLoaded, setFxLoaded] = useState(false)
   const [compareResults, setCompareResults] = useState<Record<string, YearResult[]>>({})
