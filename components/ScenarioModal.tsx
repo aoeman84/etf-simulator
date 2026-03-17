@@ -131,7 +131,19 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
             <div className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-base font-bold">📐 시나리오 설정</h2>
-                <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleApply}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${
+                      isDirty
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-slate-100 text-slate-400 cursor-default'
+                    }`}
+                  >
+                    {isDirty ? '적용하기' : '적용됨'}
+                  </button>
+                  <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">✕</button>
+                </div>
               </div>
 
               {/* 시나리오 선택 */}
@@ -301,25 +313,6 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                 <p className="text-xs text-slate-400 mt-1">한국 장기 평균 인플레이션 약 2.5%</p>
               </div>
 
-              {/* 적용 버튼 */}
-              <div className="mt-5 flex gap-2">
-                <button
-                  onClick={handleClose}
-                  className="flex-1 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50 transition-colors"
-                >
-                  취소
-                </button>
-                <button
-                  onClick={handleApply}
-                  className={`flex-2 flex-grow-[2] py-2.5 rounded-xl text-sm font-semibold transition-colors ${
-                    isDirty
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-slate-100 text-slate-400 cursor-default'
-                  }`}
-                >
-                  {isDirty ? '적용하기' : '현재 설정 유지 중'}
-                </button>
-              </div>
 
             </div>
           </div>

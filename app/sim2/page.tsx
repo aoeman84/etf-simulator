@@ -29,7 +29,7 @@ export default function Sim2Page() {
   const [years, setYears] = usePersistedState<number>('sim2_years', 10)
   const [drip, setDrip] = usePersistedState<boolean>('sim2_drip', true)
   const [tax, setTax] = usePersistedState<TaxSettings>('sim2_tax', DEFAULT_TAX)
-  const [scenario, setScenario] = usePersistedState<ScenarioSettings>('sim2_scenario', DEFAULT_SCENARIO)
+  const [scenario, setScenario] = usePersistedState<ScenarioSettings>('scenario', DEFAULT_SCENARIO)
   const [activePanel, setActivePanel] = usePersistedState<'goal' | 'tax'>('sim2_panel', 'goal')
 
   const [fxRate, setFxRate] = useState(1350)

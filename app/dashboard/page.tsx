@@ -32,7 +32,7 @@ export default function DashboardPage() {
   const [years, setYears] = usePersistedState<number>('sim_years', 10)
   const [drip, setDrip] = usePersistedState<boolean>('sim_drip', true)
   const [tax, setTax] = usePersistedState<TaxSettings>('sim_tax', DEFAULT_TAX)
-  const [scenario, setScenario] = usePersistedState<ScenarioSettings>('sim_scenario', DEFAULT_SCENARIO)
+  const [scenario, setScenario] = usePersistedState<ScenarioSettings>('scenario', DEFAULT_SCENARIO)
   const [fxRate, setFxRate] = useState(1350)
   const [results, setResults] = useState<YearResult[]>([])
   const [activeTab, setActiveTab] = useState<Tab>('simulator')

@@ -79,7 +79,7 @@ export default function SimKPage() {
   const [currentAge, setCurrentAge] = usePersistedState<number>('simk_currentAge', 35)
   const [retirementAge, setRetirementAge] = usePersistedState<number>('simk_retirementAge', 65)
   const [reinvestRefund, setReinvestRefund] = usePersistedState<boolean>('simk_reinvest', false)
-  const [scenario, setScenario] = usePersistedState<ScenarioSettings>('simk_scenario', DEFAULT_SCENARIO)
+  const [scenario, setScenario] = usePersistedState<ScenarioSettings>('scenario', DEFAULT_SCENARIO)
   const [taxWarningOpen, setTaxWarningOpen] = useState(false)
 
   const isaValid     = allocSum(isaState.etfAlloc) === 100
