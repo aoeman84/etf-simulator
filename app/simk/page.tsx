@@ -404,7 +404,7 @@ export default function SimKPage() {
                   <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }}
                     interval={Math.max(1, Math.floor(years / 5))} />
                   <YAxis tickFormatter={v => fmt(v * 1e4)} tick={{ fontSize: 11, fill: '#94a3b8' }}
-                    tickCount={5} domain={['auto', 'auto']} />
+                    tickCount={5} domain={[(dataMin: number) => dataMin * 0.9, (dataMax: number) => dataMax * 1.02]} />
                   <Tooltip
                     formatter={(v: number, name: string) => [fmt(v * 1e4) + '원', name]}
                     contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}
