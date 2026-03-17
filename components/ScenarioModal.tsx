@@ -199,7 +199,7 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                         const simkMode        = getScenarioMode({ priceCAGRAdj: draft.priceCAGRAdj, divGrowthAdj: draft.divGrowthAdj, mode: draft.mode })
                         const simkYieldVal    = SCENARIO_YIELD[simkMode]?.[ticker] ?? etf.divYield / 100
                         const baseYieldVal    = SCENARIO_YIELD['optimistic']?.[ticker] ?? etf.divYield / 100
-                        const simkYieldChanged = useSimkYield && simkMode !== 'optimistic' && Math.abs(simkYieldVal - baseYieldVal) > 0.0001
+                        const simkYieldChanged = simkMode !== 'optimistic' && Math.abs(simkYieldVal - baseYieldVal) > 0.0001
 
                         return (
                           <tr key={ticker} className="hover:bg-slate-50">
@@ -210,19 +210,13 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                               </div>
                             </td>
                             <td className="px-3 py-2 text-right text-amber-600 font-medium">
-                              {useSimkYield ? (
-                                <>
-                                  <span className={simkYieldChanged ? 'text-orange-600 font-semibold' : ''}>
-                                    {(simkYieldVal * 100).toFixed(1)}%
-                                  </span>
-                                  {simkYieldChanged && (
-                                    <span className="text-slate-400 ml-1 line-through">
-                                      {(baseYieldVal * 100).toFixed(1)}%
-                                    </span>
-                                  )}
-                                </>
-                              ) : (
-                                `${etf.divYield}%`
+                              <span className={simkYieldChanged ? 'text-orange-600 font-semibold' : ''}>
+                                {(simkYieldVal * 100).toFixed(1)}%
+                              </span>
+                              {simkYieldChanged && (
+                                <span className="text-slate-400 ml-1 line-through">
+                                  {(baseYieldVal * 100).toFixed(1)}%
+                                </span>
                               )}
                             </td>
                             <td className="px-3 py-2 text-right">
@@ -251,9 +245,7 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                 </div>
                 <div className="px-3 py-2 bg-slate-50 border-t border-slate-100">
                   <p className="text-xs text-slate-400">
-                    {useSimkYield
-                      ? '배당수익률은 시나리오별 고정값 · 주황색 = 조정됨'
-                      : '취소선 = 낙관 기준값 · 주황색 = 시나리오 조정 적용됨'}
+                    배당수익률은 시나리오별 고정값 · 주황색 = 조정됨
                   </p>
                 </div>
               </div>
