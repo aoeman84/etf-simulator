@@ -117,8 +117,9 @@ export default function SimKPage() {
     if (!primary) return []
     return primary.rows.map(row => ({
       label: `${row.age}세 (${row.year}년)`,
-      '내 포트폴리오': Math.round(row.totalBalance / 1e4),
-      '일반 계좌': Math.round(row.normalBalance / 1e4),
+      '절세계좌 (세전)': Math.round(row.totalBalance / 1e4),
+      '절세계좌 + 세액공제 재투자': Math.round((row.totalBalance + row.taxCreditReinvestedBalance) / 1e4),
+      '일반계좌 (세후)': Math.round(row.normalBalance / 1e4),
     }))
   }, [primary])
 
@@ -397,7 +398,7 @@ export default function SimKPage() {
                 </div>
                 <ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={activeTickers} useSimkYield />
               </div>
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }}
@@ -408,10 +409,14 @@ export default function SimKPage() {
                     contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}
                   />
                   <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
-                  <Line type="monotone" dataKey="내 포트폴리오" stroke="#2563eb" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="일반 계좌" stroke="#94a3b8" strokeWidth={1.5} dot={false} strokeDasharray="5 3" />
+                  <Line type="monotone" dataKey="절세계좌 + 세액공제 재투자" stroke="#1d4ed8" strokeWidth={2.5} dot={false} />
+                  <Line type="monotone" dataKey="절세계좌 (세전)" stroke="#93c5fd" strokeWidth={1.5} dot={false} strokeDasharray="4 2" />
+                  <Line type="monotone" dataKey="일반계좌 (세후)" stroke="#94a3b8" strokeWidth={1.5} dot={false} strokeDasharray="5 3" />
                 </LineChart>
               </ResponsiveContainer>
+              <p className="text-xs text-slate-400 mt-2 text-center">
+                세액공제 환급금을 일반계좌에 재투자하면 실질 절세 효과가 더 커집니다
+              </p>
             </div>
 
             {/* 연도별 테이블 */}
