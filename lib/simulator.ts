@@ -55,6 +55,12 @@ export const ETF_DATA: Record<string, ETFInfo> = {
   },
 }
 
+export const SCENARIO_YIELD: Record<string, Record<string, number>> = {
+  optimistic:  { SCHD: 0.015, VOO: 0.010, QQQ: 0.004, VYM: 0.025, JEPI: 0.060 },
+  neutral:     { SCHD: 0.025, VOO: 0.015, QQQ: 0.006, VYM: 0.035, JEPI: 0.075 },
+  pessimistic: { SCHD: 0.035, VOO: 0.020, QQQ: 0.009, VYM: 0.045, JEPI: 0.090 },
+}
+
 /**
  * 단일 ETF 시뮬레이션
  *
@@ -164,6 +170,11 @@ export function simulateMulti(
       } else {
         etf.priceCAGR = Math.max(0, etf.priceCAGR + scenario.priceCAGRAdj)
         etf.divGrowthCAGR = Math.max(0, etf.divGrowthCAGR + scenario.divGrowthAdj)
+      }
+      // custom이 아닐 때 SCENARIO_YIELD 기반 divYield 적용
+      if (scenario.mode !== 'custom') {
+        const sy = SCENARIO_YIELD[scenario.mode]?.[ticker]
+        if (sy !== undefined) etf.divYield = sy * 100
       }
     }
     return simulate(etf, monthlyKRW, years, fxRate, drip, tax)

@@ -7,7 +7,7 @@ import Footer from '@/components/Footer'
 import TaxPanel from '@/components/TaxPanel'
 import NumberSlider from '@/components/NumberSlider'
 import ScenarioModal, { ScenarioSettings } from '@/components/ScenarioModal'
-import { ETF_DATA, fmtKRW, simulate } from '@/lib/simulator'
+import { ETF_DATA, SCENARIO_YIELD, fmtKRW, simulate } from '@/lib/simulator'
 import { usePersistedState } from '@/lib/usePersistedState'
 import { DEFAULT_TAX } from '@/lib/tax'
 import { calcTax } from '@/lib/tax'
@@ -75,7 +75,20 @@ export default function Sim2Page() {
       etfAdj.priceCAGR = Math.max(0, etfAdj.priceCAGR + scenario.priceCAGRAdj)
       etfAdj.divGrowthCAGR = Math.max(0, etfAdj.divGrowthCAGR + scenario.divGrowthAdj)
     }
+    // custom이 아닐 때 SCENARIO_YIELD 기반 divYield 적용
+    if (scenario.mode !== 'custom') {
+      const sy = SCENARIO_YIELD[scenario.mode]?.[ticker]
+      if (sy !== undefined) etfAdj.divYield = sy * 100
+    }
     return simulate(etfAdj, monthlyMan * 10000, yrs, fx, dripOn, tax)
+  }
+
+  function getDisplayYield(t: string): number {
+    if (scenario.mode !== 'custom') {
+      const sy = SCENARIO_YIELD[scenario.mode]?.[t]
+      if (sy !== undefined) return sy * 100
+    }
+    return ETF_DATA[t].divYield
   }
 
   const required = calcRequired()
@@ -146,6 +159,8 @@ export default function Sim2Page() {
                   <div className="grid grid-cols-1 gap-1.5">
                     {Object.keys(ETF_DATA).map(t => {
                       const e = ETF_DATA[t]
+                      const displayYield = getDisplayYield(t)
+                      const yieldChanged = displayYield !== e.divYield
                       return (
                         <button key={t} onClick={() => setTicker(t)}
                           className={`text-left px-3 py-2 rounded-xl border text-sm transition-all ${
@@ -156,7 +171,9 @@ export default function Sim2Page() {
                           <div className="flex items-center justify-between">
                             <span className="font-semibold">{t}</span>
                             <div className="flex gap-2 text-xs opacity-60">
-                              <span>배당 {e.divYield}%</span>
+                              <span className={yieldChanged ? 'text-amber-500 opacity-100' : ''}>
+                                배당 {displayYield.toFixed(1)}%
+                              </span>
                               <span>성장 {e.divGrowthCAGR}%</span>
                             </div>
                           </div>
