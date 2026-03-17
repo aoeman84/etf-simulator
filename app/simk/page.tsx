@@ -115,18 +115,12 @@ export default function SimKPage() {
 
   const chartData = useMemo(() => {
     if (!primary) return []
-    return primary.rows.map(row => {
-      const tax    = Math.round((row.totalBalance + row.cumulativeTaxCredit) / 1e4)
-      const normal = Math.round(row.normalBalance / 1e4)
-      return {
-        label: `${row.age}세 (${row.year}년)`,
-        '절세계좌 + 세액공제': tax,
-        '일반계좌 (세후)': normal,
-        gapBlue: tax >= normal ? tax - normal : 0,
-        gapRed:  normal > tax  ? normal - tax  : 0,
-        base: Math.min(tax, normal),
-      }
-    })
+    return primary.rows.map(row => ({
+      label: `${row.age}세 (${row.year}년)`,
+      '일반계좌 (세후)':           Math.round(row.normalBalance / 1e4),
+      '절세계좌 + 세액공제':        Math.round((row.totalBalance + row.cumulativeTaxCredit) / 1e4),
+      '절세계좌 + 세액공제 재투자': Math.round((row.totalBalance + row.taxCreditReinvestedBalance) / 1e4),
+    }))
   }, [primary])
 
   const activeTickers = useMemo(() => {
@@ -406,45 +400,23 @@ export default function SimKPage() {
               </div>
               <ResponsiveContainer width="100%" height={240}>
                 <ComposedChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                  <defs>
-                    <linearGradient id="fillBlue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#1d4ed8" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#1d4ed8" stopOpacity={0.03} />
-                    </linearGradient>
-                    <linearGradient id="fillRed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%"  stopColor="#ef4444" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#ef4444" stopOpacity={0.03} />
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }}
                     interval={Math.max(1, Math.floor(years / 5))} />
                   <YAxis tickFormatter={v => fmt(v * 1e4)} tick={{ fontSize: 11, fill: '#94a3b8' }}
-                    tickCount={5} />
+                    tickCount={5} domain={['auto', 'auto']} />
                   <Tooltip
-                    formatter={(v: number, name: string) => {
-                      if (name === 'gapBlue' || name === 'gapRed' || name === 'base') return null
-                      return [fmt(v * 1e4) + '원', name]
-                    }}
+                    formatter={(v: number, name: string) => [fmt(v * 1e4) + '원', name]}
                     contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}
                   />
-                  <Legend
-                    wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }}
-                    formatter={(value) => {
-                      if (value === 'gapBlue' || value === 'gapRed' || value === 'base') return null
-                      return value
-                    }}
-                  />
-                  {/* fill-between: 투명 base → 파란 gap → 빨간 gap */}
-                  <Area type="monotone" dataKey="base"    stackId="fill" stroke="none" fill="transparent" legendType="none" />
-                  <Area type="monotone" dataKey="gapBlue" stackId="fill" stroke="none" fill="url(#fillBlue)" legendType="none" />
-                  <Area type="monotone" dataKey="gapRed"  stackId="fill2" stroke="none" fill="url(#fillRed)" legendType="none" />
-                  <Line type="monotone" dataKey="절세계좌 + 세액공제" stroke="#1d4ed8" strokeWidth={2.5} dot={false} />
-                  <Line type="monotone" dataKey="일반계좌 (세후)" stroke="#ef4444" strokeWidth={2} dot={false} strokeDasharray="5 3" />
+                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                  <Line type="monotone" dataKey="일반계좌 (세후)"           stroke="#ef4444" strokeWidth={2}   dot={false} strokeDasharray="5 3" />
+                  <Line type="monotone" dataKey="절세계좌 + 세액공제"        stroke="#93c5fd" strokeWidth={2}   dot={false} />
+                  <Line type="monotone" dataKey="절세계좌 + 세액공제 재투자" stroke="#1d4ed8" strokeWidth={2.5} dot={false} />
                 </ComposedChart>
               </ResponsiveContainer>
               <p className="text-xs text-slate-400 mt-2 text-center">
-                세액공제를 별도 보유 시 실질 절세 효과 · 파란 영역이 클수록 절세 우위
+                세액공제를 재투자하면 절세 효과가 더 커집니다
               </p>
             </div>
 
