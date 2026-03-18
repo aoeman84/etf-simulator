@@ -1,5 +1,5 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import {
@@ -81,6 +81,10 @@ export default function SimKPage() {
   const [reinvestRefund, setReinvestRefund] = usePersistedState<boolean>('simk_reinvest', false)
   const [scenario, setScenario] = usePersistedState<ScenarioSettings>('scenario', DEFAULT_SCENARIO)
   const [taxWarningOpen, setTaxWarningOpen] = useState(false)
+  const [fxRate, setFxRate] = useState(1350)
+  useEffect(() => {
+    fetch('/api/fx-rate').then(r => r.json()).then(d => { if (d.rate) setFxRate(d.rate) }).catch(() => {})
+  }, [])
 
   const isaValid     = allocSum(isaState.etfAlloc) === 100
   const pensionValid = allocSum(pensionState.etfAlloc) === 100
@@ -140,6 +144,7 @@ export default function SimKPage() {
   const zoomedData = chartData.slice(zoomStartYear)
   const monthlyPensionGross = primary ? primary.finalBalance / 20 / 12 : 0
   const pensionWarning = monthlyPensionGross > 1_000_000
+  const fxSensitivity = primary ? Math.round(primary.finalBalance * (100 / fxRate)) : 0
 
   const totalMonthly = isaState.monthly + pensionState.monthly + irpState.monthly
   const totalAnnual  = isaState.annual + pensionState.annual + irpState.annual
@@ -261,24 +266,29 @@ export default function SimKPage() {
 
             {/* 핵심 지표 카드 */}
             {primary && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-                <StatCard label="총 납입원금" value={fmtKRW(primary.totalContributed)} />
-                <StatCard label="절세 계좌 최종 잔액" value={fmtKRW(primary.finalBalance)}
-                  color="blue" sub={`${retirementAge}세 기준`} />
-                <StatCard label="일반 계좌 대비 절세 효과"
-                  value={primary.taxAdvantage >= 0
-                    ? `+${fmtKRW(primary.taxAdvantage)}`
-                    : fmtKRW(primary.taxAdvantage)}
-                  color={primary.taxAdvantage >= 0 ? 'green' : undefined}
-                  sub="연금세 · 양도세 차감 세후 비교" />
-                <StatCard label="예상 월 연금 수령액"
-                  value={fmtKRW(primary.monthlyPension)}
-                  color="amber"
-                  sub={pensionWarning
-                    ? '⚠️ 연 1,200만 초과 → 종합과세 주의'
-                    : `연금소득세 ${(primary.pensionTaxRate * 100).toFixed(1)}% 후`}
-                  warn={pensionWarning} />
-              </div>
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+                  <StatCard label="총 납입원금" value={fmtKRW(primary.totalContributed)} />
+                  <StatCard label="절세 계좌 최종 잔액" value={fmtKRW(primary.finalBalance)}
+                    color="blue" sub={`${retirementAge}세 기준`} />
+                  <StatCard label="일반 계좌 대비 절세 효과"
+                    value={primary.taxAdvantage >= 0
+                      ? `+${fmtKRW(primary.taxAdvantage)}`
+                      : fmtKRW(primary.taxAdvantage)}
+                    color={primary.taxAdvantage >= 0 ? 'green' : undefined}
+                    sub="연금세 · 양도세 차감 세후 비교" />
+                  <StatCard label="예상 월 연금 수령액"
+                    value={fmtKRW(primary.monthlyPension)}
+                    color="amber"
+                    sub={pensionWarning
+                      ? '⚠️ 연 1,200만 초과 → 종합과세 주의'
+                      : `연금소득세 ${(primary.pensionTaxRate * 100).toFixed(1)}% 후`}
+                    warn={pensionWarning} />
+                </div>
+                <div className="bg-slate-50 border border-slate-100 rounded-xl px-4 py-2 text-xs text-slate-500">
+                  💱 환율 민감도: 환율 +100원 → 최종잔액 +{fmtKRW(fxSensitivity)} <span className="text-slate-400">(현재 {fxRate.toLocaleString()}원 기준)</span>
+                </div>
+              </>
             )}
 
             {!allocValid && (
