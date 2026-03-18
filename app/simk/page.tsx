@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import {
-  ComposedChart, Area, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, ReferenceLine,
+  ComposedChart, Area, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
@@ -434,45 +434,26 @@ export default function SimKPage() {
               <div className="card p-3 sm:p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h2 className="text-sm font-semibold text-slate-700">절세 효과 (일반계좌 대비 초과분)</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">0선 위 = 절세계좌 유리 · 아래 = 일반계좌 유리</p>
+                    <h2 className="text-sm font-semibold text-slate-700">절세 효과 확대 뷰</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Y축 하단을 잘라 차이를 강조</p>
                   </div>
                 </div>
                 <ResponsiveContainer width="100%" height={256}>
-                  <ComposedChart data={chartData} margin={{ top: 4, right: 36, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id="gradCredit" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#93c5fd" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#93c5fd" stopOpacity={0.05} />
-                      </linearGradient>
-                      <linearGradient id="gradReinvest" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#1d4ed8" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#1d4ed8" stopOpacity={0.05} />
-                      </linearGradient>
-                    </defs>
+                  <ComposedChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }}
                       interval={Math.max(1, Math.floor(years / 5))} />
-                    <YAxis yAxisId="left" tickFormatter={v => fmt(v * 1e4)} tick={{ fontSize: 11, fill: '#94a3b8' }}
+                    <YAxis tickFormatter={v => fmt(v * 1e4)} tick={{ fontSize: 11, fill: '#94a3b8' }}
                       tickCount={5}
-                      domain={[
-                        (dataMin: number) => Math.max(dataMin * 0.8, -Math.max(...chartData.map(d => (d['초과분 (재투자)'] as number) ?? 0)) * 0.3),
-                        (dataMax: number) => dataMax * 1.1,
-                      ]} />
-                    <YAxis yAxisId="right" orientation="right"
-                      tickFormatter={v => Math.round(v / 10000) + '억'}
-                      tick={{ fontSize: 10, fill: '#fca5a5' }} tickCount={4}
-                      domain={[0, (dataMax: number) => dataMax * 3]} />
+                      domain={[(dataMin: number) => dataMin * 0.97, (dataMax: number) => dataMax * 1.01]} />
                     <Tooltip
                       formatter={(v: number, name: string) => [fmt(v * 1e4) + '원', name]}
                       contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}
                     />
-                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '4px' }} />
-                    <ReferenceLine yAxisId="left" y={0} stroke="#94a3b8" strokeWidth={1.5} />
-                    <Area yAxisId="left" type="monotone" dataKey="초과분 (미재투자)" stroke="#93c5fd" fill="url(#gradCredit)" strokeWidth={1.5} dot={false} />
-                    <Area yAxisId="left" type="monotone" dataKey="초과분 (재투자)"   stroke="#1d4ed8" fill="url(#gradReinvest)" strokeWidth={2}   dot={false} />
-                    <Line yAxisId="right" type="monotone" dataKey="일반계좌 (세후)" name="일반계좌 잔액(우축)"
-                      stroke="#ef4444" strokeWidth={1.5} dot={false} strokeDasharray="5 3" />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                    <Line type="monotone" dataKey="일반계좌 (세후)"           stroke="#ef4444" strokeWidth={2}   dot={false} strokeDasharray="5 3" />
+                    <Line type="monotone" dataKey="절세계좌 + 세액공제"        stroke="#93c5fd" strokeWidth={2}   dot={false} />
+                    <Line type="monotone" dataKey="절세계좌 + 세액공제 재투자" stroke="#1d4ed8" strokeWidth={2.5} dot={false} />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
