@@ -136,7 +136,7 @@ export default function SimKPage() {
   }, [isaState, pensionState, irpState])
 
   const years = Math.max(1, retirementAge - startAge)
-  const zoomStartYear = Math.max(0, years - 5)
+  const zoomStartYear = Math.max(0, years - 10)
   const zoomedData = chartData.slice(zoomStartYear)
   const pensionWarning = primary ? (primary.finalBalance / 20 / 12) > 12_000_000 : false
 
