@@ -23,7 +23,7 @@ const SIMK_TICKERS = ['SCHD', 'VOO', 'QQQ']
 
 const tickerColors: Record<string, string> = {
   SCHD: '#0ea5e9',
-  VOO:  '#f59e0b',
+  VOO:  '#10b981',
   QQQ:  '#8b5cf6',
 }
 
@@ -499,7 +499,7 @@ export default function SimKPage() {
                               {row.isaTransfer > 0 && <span className="ml-1 text-blue-500 font-bold">↗ ISA 만기</span>}
                             </td>
                             <td className="px-3 py-2.5 text-right text-sky-500 whitespace-nowrap">{fmtKRW(row.isaBalance)}</td>
-                            <td className="px-3 py-2.5 text-right text-amber-600 whitespace-nowrap">{fmtKRW(row.pensionBalance)}</td>
+                            <td className="px-3 py-2.5 text-right text-emerald-500 whitespace-nowrap">{fmtKRW(row.pensionBalance)}</td>
                             <td className="px-3 py-2.5 text-right text-violet-500 whitespace-nowrap">{fmtKRW(row.irpBalance)}</td>
                             <td className="px-3 py-2.5 text-right text-amber-600 font-medium whitespace-nowrap">+{fmtKRW(row.taxCreditThisYear)}</td>
                             <td className="px-3 py-2.5 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtKRW(row.cumulativeTaxCredit)}</td>
@@ -543,8 +543,8 @@ function AccountCard({
 }: AccountCardProps) {
   const [expanded, setExpanded] = useState(true)
 
-  const colorMap      = { blue: 'text-sky-500',     green: 'text-amber-600',    purple: 'text-violet-500'   }
-  const TICKER_COLOR: Record<string, string> = { SCHD: '#0ea5e9', VOO: '#f59e0b', QQQ: '#8b5cf6' }
+  const colorMap      = { blue: 'text-sky-500',     green: 'text-emerald-500',  purple: 'text-violet-500'   }
+  const TICKER_COLOR: Record<string, string> = { SCHD: 'accent-sky-400', VOO: 'accent-amber-400', QQQ: 'accent-violet-300' }
 
   const sum = allocSum(state.etfAlloc)
   const valid = sum === 100
@@ -591,7 +591,7 @@ function AccountCard({
       {/* 납입액 슬라이더 + 직접입력 */}
       <AmountInput
         value={amount} min={0} max={max} step={step} unit={unit}
-        accentColor={color === 'blue' ? '#0ea5e9' : color === 'green' ? '#f59e0b' : '#8b5cf6'}
+        sliderClass={color === 'blue' ? 'accent-sky-400' : color === 'green' ? 'accent-emerald-400' : 'accent-violet-400'}
         onChange={setAmount}
       />
       <div className="text-xs text-slate-400">{sub}</div>
@@ -621,8 +621,7 @@ function AccountCard({
                     type="range" min={0} max={100} step={5} value={pct}
                     disabled={isAuto}
                     onChange={e => setAllocPct(ticker, Number(e.target.value))}
-                    className={`flex-1 ${isAuto ? 'opacity-70 cursor-not-allowed' : ''}`}
-                    style={{ accentColor: isAuto ? '#c4b5fd' : (TICKER_COLOR[ticker] ?? '#2563eb') }}
+                    className={`flex-1 ${isAuto ? 'opacity-70 cursor-not-allowed accent-violet-300' : (TICKER_COLOR[ticker] ?? 'accent-sky-400')}`}
                   />
                   <PctInput value={pct} onChange={v => setAllocPct(ticker, v)} disabled={isAuto} />
                 </div>
@@ -638,9 +637,9 @@ function AccountCard({
 
 // ── 작은 입력 컴포넌트들 ─────────────────────────────────────────────────────
 
-function AmountInput({ value, min, max, step, unit, accentColor, onChange }: {
+function AmountInput({ value, min, max, step, unit, sliderClass, onChange }: {
   value: number; min: number; max: number; step: number; unit: string
-  accentColor: string; onChange: (v: number) => void
+  sliderClass: string; onChange: (v: number) => void
 }) {
   const [inputVal, setInputVal] = useState(String(value))
   useMemo(() => setInputVal(String(value)), [value])
@@ -650,7 +649,7 @@ function AmountInput({ value, min, max, step, unit, accentColor, onChange }: {
       <input
         type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
-        className="flex-1" style={{ accentColor: accentColor }}
+        className={`flex-1 ${sliderClass}`}
       />
       <div className="flex items-center gap-1 flex-shrink-0">
         <input
