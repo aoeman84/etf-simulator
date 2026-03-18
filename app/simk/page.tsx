@@ -171,7 +171,9 @@ export default function SimKPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={activeTickers} useSimkYield />} />
-      <p className="text-xs text-slate-500 bg-white border-b border-slate-100 px-4 py-2">💡 절세 계좌 시뮬레이터 · ISA + 연금저축 + IRP를 활용했을 때 절세 효과를 계산합니다</p>
+      <div className="bg-white border-b border-slate-100 py-2 text-xs text-slate-500">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4">💡 절세 계좌 시뮬레이터 · ISA + 연금저축 + IRP를 활용했을 때 절세 효과를 계산합니다</div>
+      </div>
 
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
         <div className="mb-3 sm:mb-4">

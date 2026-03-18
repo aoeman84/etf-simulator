@@ -110,7 +110,9 @@ export default function DashboardPage() {
           <a href="/portfolio" className="text-blue-300 underline text-xs ml-1">확인하기 →</a>
         </div>
       )}
-      <p className="text-xs text-slate-500 bg-white border-b border-slate-100 px-4 py-2">💡 적립식 ETF 투자 시뮬레이터 · 월 투자금과 ETF를 설정하면 장기 수익을 예측합니다</p>
+      <div className="bg-white border-b border-slate-100 py-2 text-xs text-slate-500">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4">💡 적립식 ETF 투자 시뮬레이터 · 월 투자금과 ETF를 설정하면 장기 수익을 예측합니다</div>
+      </div>
       <main className="max-w-6xl mx-auto px-4 py-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 

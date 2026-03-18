@@ -128,7 +128,9 @@ export default function Sim2Page() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} useSimkYield={false} />} />
-      <p className="text-xs text-slate-500 bg-white border-b border-slate-100 px-4 py-2">💡 목표 월배당 역산 계산기 · 원하는 세후 월배당을 입력하면 필요한 투자금을 계산합니다</p>
+      <div className="bg-white border-b border-slate-100 py-2 text-xs text-slate-500">
+        <div className="max-w-6xl mx-auto px-3 sm:px-4">💡 목표 월배당 역산 계산기 · 원하는 세후 월배당을 입력하면 필요한 투자금을 계산합니다</div>
+      </div>
       <main className="max-w-6xl mx-auto px-4 py-4">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 

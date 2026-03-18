@@ -5,7 +5,7 @@ export default function Footer() {
         <p className="text-sm font-semibold text-slate-600">Designed &amp; Built by <span className="text-blue-600">Chang Bi</span></p>
         <p className="text-xs text-slate-400">Powered by Claude · © 2026</p>
         <p className="text-xs text-slate-400">본 서비스는 투자 참고용이며 투자 권유가 아닙니다. 과거 수익률이 미래 성과를 보장하지 않습니다.</p>
-        <p className="text-xs text-slate-300 select-none">v1.84</p>
+        <p className="text-xs text-slate-300 select-none">v1.85</p>
       </div>
     </footer>
   )
