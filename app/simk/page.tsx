@@ -21,6 +21,9 @@ const DEFAULT_SCENARIO: ScenarioSettings = {
 
 const SIMK_TICKERS = ['SCHD', 'VOO', 'QQQ']
 
+const SCENARIO_MODES = ['optimistic', 'neutral', 'pessimistic'] as const
+const SCENARIO_LABELS: Record<string, string> = { optimistic: '낙관', neutral: '중립', pessimistic: '비관' }
+
 const tickerColors: Record<string, string> = {
   SCHD: '#0ea5e9',
   VOO:  '#10b981',
@@ -114,6 +117,22 @@ export default function SimKPage() {
         pension: { ...buildAcct(pensionState, mode), etfAlloc: singleEtfAlloc(ticker) } as MonthlyAccount | AnnualAccount,
         irp:     { ...buildAcct(irpState, mode), etfAlloc: singleEtfAlloc(ticker) } as MonthlyAccount | AnnualAccount,
       }),
+    }))
+  }, [baseParams, isaState, pensionState, irpState, mode])
+
+  const scenarioGrid = useMemo(() => {
+    return SIMK_TICKERS.map(ticker => ({
+      ticker,
+      cells: SCENARIO_MODES.map(sm => ({
+        mode: sm,
+        result: simulateK({
+          ...baseParams,
+          scenario: { priceCAGRAdj: 0, divGrowthAdj: 0, mode: sm },
+          isa:     { ...buildAcct(isaState, mode), etfAlloc: singleEtfAlloc(ticker) } as MonthlyAccount | AnnualAccount,
+          pension: { ...buildAcct(pensionState, mode), etfAlloc: singleEtfAlloc(ticker) } as MonthlyAccount | AnnualAccount,
+          irp:     { ...buildAcct(irpState, mode), etfAlloc: singleEtfAlloc(ticker) } as MonthlyAccount | AnnualAccount,
+        }),
+      })),
     }))
   }, [baseParams, isaState, pensionState, irpState, mode])
 
@@ -407,6 +426,56 @@ export default function SimKPage() {
                         </td>
                       </tr>
                     )})}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* 3×3 시나리오 × ETF 비교 그리드 */}
+            <div className="card overflow-hidden">
+              <div className="px-4 pt-4 pb-2">
+                <div className="text-sm font-semibold text-slate-700">시나리오별 최종잔액 비교 (3×3)</div>
+                <div className="text-xs text-slate-400 mt-0.5">ETF × 시나리오 · 동일 납입 조건 · {retirementAge}세 기준</div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs" style={{ minWidth: '320px' }}>
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50">
+                      <th className="text-left px-3 py-2.5 font-medium text-slate-500">ETF</th>
+                      {SCENARIO_MODES.map(sm => {
+                        const isCurrent = getScenarioMode(scenario) === sm
+                        return (
+                          <th key={sm} className={`text-right px-3 py-2.5 font-medium whitespace-nowrap ${
+                            isCurrent ? 'text-blue-600 bg-blue-50' : 'text-slate-500'
+                          }`}>
+                            {SCENARIO_LABELS[sm]}
+                            {isCurrent && <span className="ml-1 text-blue-400">◀</span>}
+                          </th>
+                        )
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {scenarioGrid.map(({ ticker, cells }) => (
+                      <tr key={ticker} className="hover:bg-slate-50">
+                        <td className="px-3 py-2.5">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: tickerColors[ticker] }} />
+                            <span className="font-semibold text-slate-700">{ticker}</span>
+                          </div>
+                        </td>
+                        {cells.map(({ mode: sm, result }) => {
+                          const isCurrent = getScenarioMode(scenario) === sm
+                          return (
+                            <td key={sm} className={`px-3 py-2.5 text-right font-semibold whitespace-nowrap ${
+                              isCurrent ? 'text-blue-700 bg-blue-50' : 'text-slate-700'
+                            }`}>
+                              {fmtKRW(result.finalBalance)}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
