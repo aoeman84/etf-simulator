@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import {
-  ComposedChart, AreaChart, Area, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
+  ComposedChart, AreaChart, Area, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from 'recharts'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
@@ -428,21 +428,39 @@ export default function SimKPage() {
 
               {/* 절세 효과 차이 차트 */}
               <div className="mt-4 pt-4 border-t border-slate-100">
-                <p className="text-xs font-semibold text-slate-600 mb-2">절세 효과 (일반계좌 대비 초과분)</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-slate-600">절세 효과 (일반계좌 대비 초과분)</p>
+                  <p className="text-xs text-slate-400">0선 위 = 절세계좌 유리 · 아래 = 일반계좌 유리</p>
+                </div>
                 <ResponsiveContainer width="100%" height={150}>
                   <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                    <defs>
+                      <linearGradient id="gradCredit" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#93c5fd" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#93c5fd" stopOpacity={0.05} />
+                      </linearGradient>
+                      <linearGradient id="gradReinvest" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#1d4ed8" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#1d4ed8" stopOpacity={0.05} />
+                      </linearGradient>
+                      <linearGradient id="gradNeg" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#fca5a5" stopOpacity={0.15} />
+                        <stop offset="95%" stopColor="#fca5a5" stopOpacity={0.3} />
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }}
                       interval={Math.max(1, Math.floor(years / 5))} />
                     <YAxis tickFormatter={v => fmt(v * 1e4)} tick={{ fontSize: 11, fill: '#94a3b8' }}
-                      tickCount={4} />
+                      tickCount={5} />
                     <Tooltip
                       formatter={(v: number, name: string) => [fmt(v * 1e4) + '원', name]}
                       contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}
                     />
                     <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '4px' }} />
-                    <Area type="monotone" dataKey="초과분 (미재투자)" stroke="#93c5fd" fill="#eff6ff" strokeWidth={1.5} dot={false} />
-                    <Area type="monotone" dataKey="초과분 (재투자)"   stroke="#1d4ed8" fill="#dbeafe" strokeWidth={2}   dot={false} fillOpacity={0.6} />
+                    <ReferenceLine y={0} stroke="#94a3b8" strokeWidth={1.5} />
+                    <Area type="monotone" dataKey="초과분 (미재투자)" stroke="#93c5fd" fill="url(#gradCredit)" strokeWidth={1.5} dot={false} />
+                    <Area type="monotone" dataKey="초과분 (재투자)"   stroke="#1d4ed8" fill="url(#gradReinvest)" strokeWidth={2} dot={false} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

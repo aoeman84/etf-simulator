@@ -35,7 +35,7 @@ export default function LoginPage() {
         <p className="text-sm font-medium text-slate-500">Designed &amp; Built by <span className="text-blue-600 font-semibold">Chang Bi</span></p>
         <p className="text-xs text-slate-400">Powered by Claude · © 2026</p>
         <p className="text-xs text-slate-400">본 시뮬레이터는 투자 참고용이며 실제 투자 조언이 아닙니다.</p>
-        <p className="text-xs text-slate-300 select-none">v1.61</p>
+        <p className="text-xs text-slate-300 select-none">v1.62</p>
       </div>
     </div>
   )
