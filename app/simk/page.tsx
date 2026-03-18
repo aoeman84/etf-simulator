@@ -544,7 +544,7 @@ function AccountCard({
   const [expanded, setExpanded] = useState(true)
 
   const colorMap      = { blue: 'text-sky-500',     green: 'text-emerald-500',  purple: 'text-violet-500'   }
-  const TICKER_COLOR: Record<string, string> = { SCHD: 'accent-sky-400', VOO: 'accent-amber-400', QQQ: 'accent-violet-300' }
+  const TICKER_ACCENT: Record<string, string> = { SCHD: 'accent-sky-400', VOO: 'accent-amber-400', QQQ: 'accent-violet-300' }
 
   const sum = allocSum(state.etfAlloc)
   const valid = sum === 100
@@ -621,7 +621,7 @@ function AccountCard({
                     type="range" min={0} max={100} step={5} value={pct}
                     disabled={isAuto}
                     onChange={e => setAllocPct(ticker, Number(e.target.value))}
-                    className={`flex-1 ${isAuto ? 'opacity-70 cursor-not-allowed accent-violet-300' : (TICKER_COLOR[ticker] ?? 'accent-sky-400')}`}
+                    className={`flex-1 ${isAuto ? 'opacity-70 cursor-not-allowed accent-violet-300' : (TICKER_ACCENT[ticker] ?? 'accent-sky-400')}`}
                   />
                   <PctInput value={pct} onChange={v => setAllocPct(ticker, v)} disabled={isAuto} />
                 </div>
