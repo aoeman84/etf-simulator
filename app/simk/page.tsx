@@ -3,7 +3,7 @@ import { useState, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import {
-  ComposedChart, Area, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
+  ComposedChart, AreaChart, Area, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
@@ -115,12 +115,19 @@ export default function SimKPage() {
 
   const chartData = useMemo(() => {
     if (!primary) return []
-    return primary.rows.map(row => ({
-      label: `${row.age}세 (${row.year}년)`,
-      '일반계좌 (세후)':           Math.round(row.normalBalance / 1e4),
-      '절세계좌 + 세액공제':        Math.round((row.totalBalance + row.cumulativeTaxCredit) / 1e4),
-      '절세계좌 + 세액공제 재투자': Math.round((row.totalBalance + row.taxCreditReinvestedBalance) / 1e4),
-    }))
+    return primary.rows.map(row => {
+      const normal    = Math.round(row.normalBalance / 1e4)
+      const withCredit = Math.round((row.totalBalance + row.cumulativeTaxCredit) / 1e4)
+      const withReinvest = Math.round((row.totalBalance + row.taxCreditReinvestedBalance) / 1e4)
+      return {
+        label: `${row.age}세 (${row.year}년)`,
+        '일반계좌 (세후)':           normal,
+        '절세계좌 + 세액공제':        withCredit,
+        '절세계좌 + 세액공제 재투자': withReinvest,
+        '초과분 (미재투자)': withCredit - normal,
+        '초과분 (재투자)':   withReinvest - normal,
+      }
+    })
   }, [primary])
 
   const activeTickers = useMemo(() => {
@@ -418,6 +425,27 @@ export default function SimKPage() {
               <p className="text-xs text-slate-400 mt-2 text-center">
                 세액공제를 재투자하면 절세 효과가 더 커집니다
               </p>
+
+              {/* 절세 효과 차이 차트 */}
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-600 mb-2">절세 효과 (일반계좌 대비 초과분)</p>
+                <ResponsiveContainer width="100%" height={150}>
+                  <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }}
+                      interval={Math.max(1, Math.floor(years / 5))} />
+                    <YAxis tickFormatter={v => fmt(v * 1e4)} tick={{ fontSize: 11, fill: '#94a3b8' }}
+                      tickCount={4} />
+                    <Tooltip
+                      formatter={(v: number, name: string) => [fmt(v * 1e4) + '원', name]}
+                      contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '4px' }} />
+                    <Area type="monotone" dataKey="초과분 (미재투자)" stroke="#93c5fd" fill="#eff6ff" strokeWidth={1.5} dot={false} />
+                    <Area type="monotone" dataKey="초과분 (재투자)"   stroke="#1d4ed8" fill="#dbeafe" strokeWidth={2}   dot={false} fillOpacity={0.6} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
 
             {/* 연도별 테이블 */}
