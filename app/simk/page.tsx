@@ -136,6 +136,8 @@ export default function SimKPage() {
   }, [isaState, pensionState, irpState])
 
   const years = Math.max(1, retirementAge - startAge)
+  const zoomStartYear = Math.max(0, years - 5)
+  const zoomedData = chartData.slice(zoomStartYear)
   const pensionWarning = primary ? (primary.finalBalance / 20 / 12) > 12_000_000 : false
 
   const totalMonthly = isaState.monthly + pensionState.monthly + irpState.monthly
@@ -434,15 +436,15 @@ export default function SimKPage() {
               <div className="card p-3 sm:p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div>
-                    <h2 className="text-sm font-semibold text-slate-700">절세 효과 확대 뷰</h2>
-                    <p className="text-xs text-slate-400 mt-0.5">Y축 하단을 잘라 차이를 강조</p>
+                    <h2 className="text-sm font-semibold text-slate-700">절세 효과 확대 뷰 (수령 5년 전~)</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">수령 시점 전후 구간만 확대</p>
                   </div>
                 </div>
                 <ResponsiveContainer width="100%" height={256}>
-                  <ComposedChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                  <ComposedChart data={zoomedData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }}
-                      interval={Math.max(1, Math.floor(years / 5))} />
+                      interval={Math.max(0, Math.floor(zoomedData.length / 5))} />
                     <YAxis tickFormatter={v => fmt(v * 1e4)} tick={{ fontSize: 11, fill: '#94a3b8' }}
                       tickCount={5}
                       domain={[(dataMin: number) => dataMin * 0.97, (dataMax: number) => dataMax * 1.01]} />
