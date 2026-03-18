@@ -60,7 +60,7 @@
   input[type="range"] {
     @apply w-full;
     height: 36px;         /* 터치 영역 확대 */
-    touch-action: pan-y;  /* 수직 스크롤 허용 (슬라이더 터치 스크롤 버그 수정) */
+    touch-action: none;   /* iOS Safari 슬라이더 드래그 시 페이지 스크롤 방지 */
     cursor: pointer;
   }
 

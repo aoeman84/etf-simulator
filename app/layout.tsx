@@ -1,6 +1,7 @@
 'use client'
 import { SessionProvider } from 'next-auth/react'
 import './globals.css'
+import SliderTouchFix from '@/components/SliderTouchFix'
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -22,6 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <SessionProvider>
           <PWARegister />
+          <SliderTouchFix />
           {children}
         </SessionProvider>
       </body>
