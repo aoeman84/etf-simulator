@@ -12,11 +12,11 @@ import { runBacktest, calcMDD } from '@/lib/historicalReturns'
 import { usePersistedState } from '@/lib/usePersistedState'
 
 const ETF_INFO: Record<string, { color: string; desc: string }> = {
-  QQQ:  { color: '#9333ea', desc: 'NASDAQ-100 · 2000~' },
-  VOO:  { color: '#16a34a', desc: 'S&P 500 · 2011~' },
+  QQQ:  { color: '#7c3aed', desc: 'NASDAQ-100 · 2000~' },
+  VOO:  { color: '#0891b2', desc: 'S&P 500 · 2011~' },
   SCHD: { color: '#2563eb', desc: '배당성장 · 2012~' },
-  VYM:  { color: '#f59e0b', desc: '고배당 · 2007~' },
-  JEPI: { color: '#ef4444', desc: '커버드콜 · 2020~' },
+  VYM:  { color: '#059669', desc: '고배당 · 2007~' },
+  JEPI: { color: '#dc2626', desc: '커버드콜 · 2020~' },
 }
 
 const ETF_MIN_YEAR: Record<string, number> = {
@@ -110,11 +110,12 @@ export default function BacktestPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
+      <p className="text-xs text-slate-500 bg-white border-b border-slate-100 px-4 py-2">💡 역사적 수익률 시뮬레이션 · 실제 연간 총수익률 기반 DCA 투자 결과를 확인합니다</p>
+
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-5">
 
         <div className="mb-4">
           <h1 className="text-base sm:text-lg font-bold text-slate-800">백테스트 — 역사적 수익률 시뮬레이션</h1>
-          <p className="text-xs text-slate-500 mt-0.5">실제 연간 총수익률(배당 포함)을 기반으로 DCA 투자 결과를 시뮬레이션합니다.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">

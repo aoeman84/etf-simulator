@@ -24,7 +24,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     divYield: 1.3,
     divGrowthCAGR: 6.0,
     priceCAGR: 9.0,
-    color: '#16a34a',
+    color: '#0891b2',
   },
   QQQ: {
     ticker: 'QQQ',
@@ -33,7 +33,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     divYield: 0.6,
     divGrowthCAGR: 8.0,
     priceCAGR: 12.0,
-    color: '#9333ea',
+    color: '#7c3aed',
   },
   VYM: {
     ticker: 'VYM',
@@ -42,7 +42,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     divYield: 2.9,
     divGrowthCAGR: 7.0,
     priceCAGR: 8.0,
-    color: '#ea580c',
+    color: '#059669',
   },
   JEPI: {
     ticker: 'JEPI',
@@ -51,7 +51,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     divYield: 7.5,
     divGrowthCAGR: 2.0,
     priceCAGR: 3.0,
-    color: '#0891b2',
+    color: '#dc2626',
     tooltip: '커버드콜 ETF: 높은 배당 대신 주가 성장이 제한됩니다',
   },
 }

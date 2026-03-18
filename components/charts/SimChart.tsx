@@ -28,8 +28,8 @@ export default function SimChart({ results, taxEnabled }: { results: YearResult[
           contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px' }}
         />
         <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '8px' }} />
-        <Bar dataKey="투자원금" stackId="a" fill="#3b82f6" />
-        <Bar dataKey="평가이익" stackId="a" fill="#22c55e" />
+        <Bar dataKey="투자원금" stackId="a" fill="#94a3b8" />
+        <Bar dataKey="평가이익" stackId="a" fill="#2563eb" />
         <Bar dataKey="배당금"   stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>

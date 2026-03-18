@@ -25,9 +25,9 @@ const SCENARIO_MODES = ['optimistic', 'neutral', 'pessimistic'] as const
 const SCENARIO_LABELS: Record<string, string> = { optimistic: '낙관', neutral: '중립', pessimistic: '비관' }
 
 const tickerColors: Record<string, string> = {
-  SCHD: '#0ea5e9',
-  VOO:  '#10b981',
-  QQQ:  '#8b5cf6',
+  SCHD: '#2563eb',
+  VOO:  '#0891b2',
+  QQQ:  '#7c3aed',
 }
 
 const TICKER_ACCENT: Record<string, string> = {
@@ -171,11 +171,11 @@ export default function SimKPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} selectedTickers={activeTickers} useSimkYield />} />
+      <p className="text-xs text-slate-500 bg-white border-b border-slate-100 px-4 py-2">💡 절세 계좌 시뮬레이터 · ISA + 연금저축 + IRP를 활용했을 때 절세 효과를 계산합니다</p>
 
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
         <div className="mb-3 sm:mb-4">
           <h1 className="text-base sm:text-lg font-bold text-slate-800">Sim K — 절세 계좌 시뮬레이터</h1>
-          <p className="text-xs text-slate-500 mt-0.5 hidden sm:block">ISA + 연금저축 + IRP 절세 계좌를 활용했을 때 절세 효과를 시뮬레이션합니다.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-5">
