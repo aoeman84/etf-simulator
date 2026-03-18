@@ -461,7 +461,8 @@ export default function SimKPage() {
                       ]} />
                     <YAxis yAxisId="right" orientation="right"
                       tickFormatter={v => Math.round(v / 10000) + '억'}
-                      tick={{ fontSize: 10, fill: '#fca5a5' }} tickCount={4} />
+                      tick={{ fontSize: 10, fill: '#fca5a5' }} tickCount={4}
+                      domain={[0, (dataMax: number) => dataMax * 3]} />
                     <Tooltip
                       formatter={(v: number, name: string) => [fmt(v * 1e4) + '원', name]}
                       contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}
