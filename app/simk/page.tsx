@@ -702,6 +702,8 @@ function AccountCard({
                     type="range" min={0} max={100} step={5} value={pct}
                     disabled={isAuto}
                     onChange={e => setAllocPct(ticker, Number(e.target.value))}
+                    onTouchStart={e => e.stopPropagation()}
+                    onTouchMove={e => e.stopPropagation()}
                     className={`flex-1 ${isAuto ? 'opacity-70 cursor-not-allowed' : ''}`}
                   />
                   <PctInput value={pct} onChange={v => setAllocPct(ticker, v)} disabled={isAuto} />
@@ -730,6 +732,8 @@ function AmountInput({ value, min, max, step, unit, sliderClass, onChange }: {
       <input
         type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
+        onTouchStart={e => e.stopPropagation()}
+        onTouchMove={e => e.stopPropagation()}
         className={`flex-1 ${sliderClass}`}
       />
       <div className="flex items-center gap-1 flex-shrink-0">
@@ -799,6 +803,8 @@ function SliderRow({ label, value, min, max, step, display, onChange }: {
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
+        onTouchStart={e => e.stopPropagation()}
+        onTouchMove={e => e.stopPropagation()}
         className="w-full accent-blue-600" />
     </div>
   )

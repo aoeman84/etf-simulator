@@ -91,6 +91,8 @@ export default function GoalCalculator() {
                   </div>
                   <input type="range" min={50} max={2000} step={50} value={targetDiv}
                     onChange={e => setTargetDiv(Number(e.target.value))}
+                    onTouchStart={e => e.stopPropagation()}
+                    onTouchMove={e => e.stopPropagation()}
                     className="w-full accent-amber-500" />
                   <div className="flex justify-between text-xs text-slate-400 mt-0.5">
                     <span>50만</span><span>1,000만</span><span>2,000만</span>

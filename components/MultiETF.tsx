@@ -169,6 +169,8 @@ export default function MultiETF({ allocations, onChange, actionSlot }: Props) {
               <div className="flex items-center gap-2">
                 <input type="range" min={10} max={2000} step={10} value={a.monthly}
                   onChange={e => updateMonthly(a.ticker, Number(e.target.value))}
+                  onTouchStart={e => e.stopPropagation()}
+                  onTouchMove={e => e.stopPropagation()}
                   className="flex-1 accent-blue-600" style={{ height: '28px' }} />
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <MonthlyInput value={a.monthly} onChange={v => updateMonthly(a.ticker, v)} />

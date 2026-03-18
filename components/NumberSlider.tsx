@@ -38,6 +38,8 @@ export default function NumberSlider({
         <input
           type="range" min={min} max={max} step={step} value={value}
           onChange={e => onChange(Number(e.target.value))}
+          onTouchStart={e => e.stopPropagation()}
+          onTouchMove={e => e.stopPropagation()}
           className="flex-1 accent-blue-600"
           style={{ height: '28px' }}
         />

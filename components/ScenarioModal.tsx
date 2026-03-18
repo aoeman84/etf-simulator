@@ -275,6 +275,8 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                     <input type="range" min={-8} max={4} step={0.5}
                       value={draft.priceCAGRAdj}
                       onChange={e => setDraft({ ...draft, priceCAGRAdj: Number(e.target.value) })}
+                      onTouchStart={e => e.stopPropagation()}
+                      onTouchMove={e => e.stopPropagation()}
                       className="w-full accent-blue-600" />
                     <div className="flex justify-between text-xs text-slate-400 mt-0.5">
                       <span>-8%</span><span>0%</span><span>+4%</span>
@@ -291,6 +293,8 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                       <input type="range" min={-13} max={4} step={0.5}
                         value={draft.divGrowthAdj}
                         onChange={e => setDraft({ ...draft, divGrowthAdj: Number(e.target.value) })}
+                        onTouchStart={e => e.stopPropagation()}
+                        onTouchMove={e => e.stopPropagation()}
                         className="w-full accent-blue-600" />
                       <div className="flex justify-between text-xs text-slate-400 mt-0.5">
                         <span>-13%</span><span>0%</span><span>+4%</span>
@@ -309,6 +313,8 @@ export default function ScenarioModal({ scenario, onChange, selectedTickers, use
                 <input type="range" min={0} max={6} step={0.5}
                   value={draft.inflationRate}
                   onChange={e => setDraft({ ...draft, inflationRate: Number(e.target.value) })}
+                  onTouchStart={e => e.stopPropagation()}
+                  onTouchMove={e => e.stopPropagation()}
                   className="w-full accent-slate-500" />
                 <p className="text-xs text-slate-400 mt-1">한국 장기 평균 인플레이션 약 2.5%</p>
               </div>

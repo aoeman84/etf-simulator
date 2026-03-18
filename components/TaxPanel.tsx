@@ -158,6 +158,8 @@ export default function TaxPanel({ tax, onChange }: Props) {
                   <input type="range" min={0} max={20_000_000} step={500_000}
                     value={tax.otherFinancialIncomeKRW ?? 0}
                     onChange={e => set('otherFinancialIncomeKRW', Number(e.target.value))}
+                    onTouchStart={e => e.stopPropagation()}
+                    onTouchMove={e => e.stopPropagation()}
                     className="w-full accent-blue-600" />
                   <div className="flex justify-between text-xs text-slate-400 mt-0.5">
                     <span>0원</span><span className="text-blue-500 font-medium">2,000만원</span>
@@ -194,6 +196,8 @@ export default function TaxPanel({ tax, onChange }: Props) {
                   <input type="range" min={0} max={100} step={1}
                     value={sliderVal}
                     onChange={e => set('otherIncomeKRW', sliderToIncome(Number(e.target.value)))}
+                    onTouchStart={e => e.stopPropagation()}
+                    onTouchMove={e => e.stopPropagation()}
                     className="w-full accent-orange-500" />
 
                   {/* 동적 눈금 */}

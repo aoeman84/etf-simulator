@@ -358,6 +358,8 @@ function NumberSlider({ label, value, min, max, step, display, unit, onChange, h
       <div className="flex items-center gap-2">
         <input type="range" min={min} max={max} step={step} value={value}
           onChange={e => onChange(Number(e.target.value))}
+          onTouchStart={e => e.stopPropagation()}
+          onTouchMove={e => e.stopPropagation()}
           className="flex-1 accent-blue-600" style={{ height: '28px' }} />
         <div className="flex items-center gap-1 flex-shrink-0">
           <input type="number" min={min} max={max} step={step} value={inputVal}

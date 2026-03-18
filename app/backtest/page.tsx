@@ -185,6 +185,8 @@ export default function BacktestPage() {
                 step={1}
                 value={startYear}
                 onChange={e => setStartYear(Number(e.target.value))}
+                onTouchStart={e => e.stopPropagation()}
+                onTouchMove={e => e.stopPropagation()}
                 className="w-full"
               />
               <div className="flex justify-between text-xs text-slate-400 mt-1">
@@ -208,6 +210,8 @@ export default function BacktestPage() {
                 step={10}
                 value={monthly}
                 onChange={e => setMonthly(Number(e.target.value))}
+                onTouchStart={e => e.stopPropagation()}
+                onTouchMove={e => e.stopPropagation()}
                 className="w-full"
               />
               <div className="flex justify-between text-xs text-slate-400 mt-1">
