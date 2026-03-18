@@ -103,15 +103,23 @@ export default function MultiETF({ allocations, onChange, actionSlot }: Props) {
         <div className="grid grid-cols-5 gap-1.5">
           {Object.keys(ETF_DATA).map(t => {
             const active = allocations.some(a => a.ticker === t)
+            const etfMeta = ETF_DATA[t]
             return (
-              <button key={t} onClick={() => toggleETF(t)}
-                className={`py-1.5 rounded-lg border text-xs font-semibold transition-all ${
-                  active
-                    ? 'border-blue-400 bg-blue-50 text-blue-700'
-                    : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
-                }`}>
-                {t}
-              </button>
+              <div key={t} className="relative group">
+                <button onClick={() => toggleETF(t)}
+                  className={`w-full py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                    active
+                      ? 'border-blue-400 bg-blue-50 text-blue-700'
+                      : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                  }`}>
+                  {t}
+                </button>
+                {etfMeta.tooltip && (
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 hidden group-hover:block z-10 leading-relaxed pointer-events-none">
+                    {etfMeta.tooltip}
+                  </span>
+                )}
+              </div>
             )
           })}
         </div>

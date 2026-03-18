@@ -52,6 +52,7 @@ export const ETF_DATA: Record<string, ETFInfo> = {
     divGrowthCAGR: 2.0,
     priceCAGR: 3.0,
     color: '#0891b2',
+    tooltip: '커버드콜 ETF: 높은 배당 대신 주가 성장이 제한됩니다',
   },
 }
 

@@ -6,6 +6,7 @@ export interface ETFInfo {
   divGrowthCAGR: number
   priceCAGR: number
   color: string
+  tooltip?: string
 }
 
 export interface TaxSettings {

@@ -129,6 +129,7 @@ export default function Sim2Page() {
     <div className="min-h-screen bg-slate-50">
       <Navbar titleSlot={<ScenarioModal scenario={scenario} onChange={setScenario} useSimkYield={false} />} />
       <main className="max-w-6xl mx-auto px-4 py-4">
+        <p className="text-xs text-slate-400 mb-3">💡 목표 월배당 역산 계산기 · 원하는 세후 월배당을 입력하면 필요한 투자금을 계산합니다</p>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
           {/* 왼쪽 패널 */}
@@ -169,7 +170,17 @@ export default function Sim2Page() {
                               : 'border-slate-200 hover:border-slate-300 text-slate-600'
                           }`}>
                           <div className="flex items-center justify-between">
-                            <span className="font-semibold">{t}</span>
+                            <div className="flex items-center gap-1">
+                              <span className="font-semibold">{t}</span>
+                              {e.tooltip && (
+                                <span className="relative group">
+                                  <span className="text-slate-400 cursor-help text-xs">ⓘ</span>
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-slate-800 text-white text-xs rounded-lg px-2.5 py-1.5 hidden group-hover:block z-10 leading-relaxed pointer-events-none">
+                                    {e.tooltip}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
                             <div className="flex gap-2 text-xs opacity-60">
                               <span className={yieldChanged ? 'text-amber-500 opacity-100' : ''}>
                                 배당 {displayYield.toFixed(1)}%
