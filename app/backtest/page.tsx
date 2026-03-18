@@ -116,10 +116,6 @@ export default function BacktestPage() {
 
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-5">
 
-        <div className="mb-4">
-          <h1 className="text-base sm:text-lg font-bold text-slate-800">백테스트 — 역사적 수익률 시뮬레이션</h1>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
 
           {/* ── 입력 패널 ── */}
@@ -250,7 +246,9 @@ export default function BacktestPage() {
                 </div>
                 <div className="card p-3 sm:p-4">
                   <div className="text-xs text-slate-400 mb-1">최대 낙폭 (MDD)</div>
-                  <div className="text-lg font-bold text-red-500">{fmtPct(stats.mdd)}</div>
+                  <div className="text-lg font-bold text-red-500">
+                    {stats.mdd === 0 ? '0.0%' : `${stats.mdd.toFixed(1)}%`}
+                  </div>
                 </div>
                 <div className="card p-3 sm:p-4">
                   <div className="text-xs text-slate-400 mb-1">수익 / 손실 연도</div>

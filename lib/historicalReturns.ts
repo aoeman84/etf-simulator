@@ -141,12 +141,13 @@ export function calcCAGR(startBalance: number, endBalance: number, years: number
 }
 
 export function calcMDD(rows: BacktestYearRow[]): number {
-  let peak = 0
+  if (rows.length === 0) return 0
+  let peak = rows[0].balance
   let mdd = 0
   for (const row of rows) {
-    if (row.balance > peak) peak = row.balance
-    const drawdown = peak > 0 ? (row.balance - peak) / peak * 100 : 0
+    peak = Math.max(peak, row.balance)
+    const drawdown = (row.balance - peak) / peak
     if (drawdown < mdd) mdd = drawdown
   }
-  return mdd
+  return mdd * 100 // percentage, always <= 0
 }
