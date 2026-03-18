@@ -748,7 +748,7 @@ function AmountInput({ value, min, max, step, unit, sliderClass, onChange }: {
             setInputVal(String(c))
             onChange(c)
           }}
-          className="w-16 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-16 text-right border border-slate-200 rounded-xl px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
           inputMode="numeric"
         />
         <span className="text-xs text-slate-500">{unit}</span>

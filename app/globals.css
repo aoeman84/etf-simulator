@@ -40,6 +40,11 @@
     min-height: 44px; /* 모바일 터치 최소 크기 */
   }
 
+  .btn-secondary {
+    @apply bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 text-sm font-medium px-4 py-2 rounded-xl transition-colors;
+    touch-action: manipulation;
+  }
+
   .btn-ghost {
     @apply hover:bg-slate-100 active:bg-slate-200 text-slate-600 font-medium px-4 py-2 rounded-xl transition-colors;
     touch-action: manipulation;

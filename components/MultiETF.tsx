@@ -67,7 +67,7 @@ function MonthlyInput({ value, onChange }: { value: number; onChange: (v: number
   return (
     <input type="number" min={10} max={2000} step={10} value={inputVal}
       onChange={handleChange} onBlur={handleBlur}
-      className="w-16 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
+      className="w-16 text-right border border-slate-200 rounded-xl px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
       inputMode="numeric" />
   )
 }

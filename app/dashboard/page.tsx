@@ -361,7 +361,7 @@ function NumberSlider({ label, value, min, max, step, display, unit, onChange, h
           <input type="number" min={min} max={max} step={step} value={inputVal}
             onChange={e => { setInputVal(e.target.value); const n = parseInt(e.target.value, 10); if (!isNaN(n) && n >= min && n <= max) onChange(n) }}
             onBlur={() => { const n = parseInt(inputVal, 10); const c = isNaN(n) ? min : Math.min(max, Math.max(min, n)); setInputVal(String(c)); onChange(c) }}
-            className="w-16 text-right border border-slate-200 rounded-lg px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-16 text-right border border-slate-200 rounded-xl px-2 py-1 text-sm font-semibold text-blue-600 outline-none focus:ring-2 focus:ring-blue-500"
             inputMode="numeric" />
           <span className="text-xs text-slate-500">{unit}</span>
         </div>

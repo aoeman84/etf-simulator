@@ -7,6 +7,7 @@ import Footer from '@/components/Footer'
 import CompareChart from '@/components/charts/CompareChart'
 import NumberSlider from '@/components/NumberSlider'
 import { ETF_DATA, simulate, fmtKRW } from '@/lib/simulator'
+import { ETF_COLORS } from '@/lib/etfColors'
 import { usePersistedState } from '@/lib/usePersistedState'
 import ScenarioModal, { ScenarioSettings } from '@/components/ScenarioModal'
 import { YearResult } from '@/types'
@@ -158,7 +159,7 @@ export default function ComparePage() {
                 const etf = ETF_DATA[t]
                 if (!last) return null
                 return (
-                  <div key={t} className="card p-4" style={{ borderTop: `3px solid ${etf.color}` }}>
+                  <div key={t} className="card p-4" style={{ borderTop: `3px solid ${ETF_COLORS[t] ?? etf.color}` }}>
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-bold text-base">{t}</span>
                       <span className="text-xs text-slate-400">{years}년 후</span>
@@ -242,7 +243,7 @@ export default function ComparePage() {
                           <td className="px-4 py-3 sticky left-0 bg-white z-10 whitespace-nowrap"
                             style={{ boxShadow: '2px 0 4px rgba(0,0,0,0.04)' }}>
                             <div className="flex items-center gap-2">
-                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: etf.color }} />
+                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ETF_COLORS[t] ?? etf.color }} />
                               <span className="font-semibold">{t}</span>
                             </div>
                           </td>
