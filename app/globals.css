@@ -66,21 +66,21 @@
   }
 
   /* 슬라이더 색상 — accent-color 대신 pseudo-element 직접 지정 (Windows Chrome 호환) */
-  .slider-sky::-webkit-slider-thumb        { background: rgb(56, 189, 248); }
-  .slider-sky::-moz-range-thumb            { background: rgb(56, 189, 248); }
-  .slider-sky::-webkit-slider-runnable-track { background: rgba(56, 189, 248, 0.3); }
+  .slider-sky::-webkit-slider-thumb           { background: #2563eb; }
+  .slider-sky::-moz-range-thumb               { background: #2563eb; }
+  .slider-sky::-webkit-slider-runnable-track  { background: rgba(37, 99, 235, 0.2); }
 
-  .slider-amber::-webkit-slider-thumb       { background: rgb(251, 191, 36); }
-  .slider-amber::-moz-range-thumb           { background: rgb(251, 191, 36); }
-  .slider-amber::-webkit-slider-runnable-track { background: rgba(251, 191, 36, 0.3); }
+  .slider-amber::-webkit-slider-thumb          { background: #0ea5e9; }
+  .slider-amber::-moz-range-thumb              { background: #0ea5e9; }
+  .slider-amber::-webkit-slider-runnable-track { background: rgba(14, 165, 233, 0.2); }
 
-  .slider-violet::-webkit-slider-thumb      { background: rgb(167, 139, 250); }
-  .slider-violet::-moz-range-thumb          { background: rgb(167, 139, 250); }
-  .slider-violet::-webkit-slider-runnable-track { background: rgba(167, 139, 250, 0.3); }
+  .slider-emerald::-webkit-slider-thumb          { background: #6366f1; }
+  .slider-emerald::-moz-range-thumb              { background: #6366f1; }
+  .slider-emerald::-webkit-slider-runnable-track { background: rgba(99, 102, 241, 0.2); }
 
-  .slider-emerald::-webkit-slider-thumb     { background: rgb(52, 211, 153); }
-  .slider-emerald::-moz-range-thumb         { background: rgb(52, 211, 153); }
-  .slider-emerald::-webkit-slider-runnable-track { background: rgba(52, 211, 153, 0.3); }
+  .slider-violet::-webkit-slider-thumb          { background: #8b5cf6; }
+  .slider-violet::-moz-range-thumb              { background: #8b5cf6; }
+  .slider-violet::-webkit-slider-runnable-track { background: rgba(139, 92, 246, 0.2); }
 
   select {
     font-size: 16px;
