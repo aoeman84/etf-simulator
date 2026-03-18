@@ -544,7 +544,7 @@ function AccountCard({
   const [expanded, setExpanded] = useState(true)
 
   const colorMap      = { blue: 'text-sky-500',     green: 'text-emerald-500',  purple: 'text-violet-500'   }
-  const TICKER_ACCENT: Record<string, string> = { SCHD: 'slider-sky', VOO: 'slider-amber', QQQ: 'slider-violet' }
+  const TICKER_ACCENT: Record<string, string> = { SCHD: '', VOO: '', QQQ: '' }
 
   const sum = allocSum(state.etfAlloc)
   const valid = sum === 100
@@ -591,7 +591,7 @@ function AccountCard({
       {/* 납입액 슬라이더 + 직접입력 */}
       <AmountInput
         value={amount} min={0} max={max} step={step} unit={unit}
-        sliderClass={color === 'blue' ? 'slider-sky' : color === 'green' ? 'slider-emerald' : 'slider-violet'}
+        sliderClass=""
         onChange={setAmount}
       />
       <div className="text-xs text-slate-400">{sub}</div>
@@ -621,7 +621,7 @@ function AccountCard({
                     type="range" min={0} max={100} step={5} value={pct}
                     disabled={isAuto}
                     onChange={e => setAllocPct(ticker, Number(e.target.value))}
-                    className={`flex-1 ${isAuto ? 'opacity-70 cursor-not-allowed slider-violet' : (TICKER_ACCENT[ticker] ?? 'slider-sky')}`}
+                    className={`flex-1 ${isAuto ? 'opacity-70 cursor-not-allowed' : ''}`}
                   />
                   <PctInput value={pct} onChange={v => setAllocPct(ticker, v)} disabled={isAuto} />
                 </div>
