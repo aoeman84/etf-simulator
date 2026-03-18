@@ -139,6 +139,7 @@ export default function SimKPage() {
   const zoomStartYear = Math.max(0, years - 10)
   const zoomedData = chartData.slice(zoomStartYear)
   const pensionWarning = primary ? (primary.finalBalance / 20 / 12) > 12_000_000 : false
+  const monthlyPensionAmount = primary ? primary.finalBalance / 20 / 12 : 0
 
   const totalMonthly = isaState.monthly + pensionState.monthly + irpState.monthly
   const totalAnnual  = isaState.annual + pensionState.annual + irpState.annual
@@ -273,7 +274,9 @@ export default function SimKPage() {
                 <StatCard label="예상 월 연금 수령액"
                   value={fmtKRW(primary.monthlyPension)}
                   color="amber"
-                  sub={`연금소득세 ${(primary.pensionTaxRate * 100).toFixed(1)}% 후`}
+                  sub={pensionWarning
+                    ? '⚠️ 연 1,200만 초과 → 종합과세 주의'
+                    : `연금소득세 ${(primary.pensionTaxRate * 100).toFixed(1)}% 후`}
                   warn={pensionWarning} />
               </div>
             )}
@@ -285,8 +288,9 @@ export default function SimKPage() {
             )}
 
             {pensionWarning && (
-              <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 text-xs text-orange-700">
-                ⚠️ 연간 수령액이 1,200만원을 초과할 수 있습니다. 종합과세 대상이 될 수 있으니 분산 수령을 검토하세요.
+              <div className="bg-orange-50 border border-orange-200 rounded-2xl px-4 py-3 text-xs text-orange-700 leading-relaxed">
+                ⚠️ {retirementAge}세 수령 시 월 {fmtKRW(monthlyPensionAmount)}으로 연 1,200만원을 초과합니다.
+                종합과세 대상이 될 수 있으니 수령 기간을 {retirementAge + 5}세 이후로 연장하거나 분산 수령을 검토하세요.
               </div>
             )}
 
