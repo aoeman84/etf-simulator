@@ -432,7 +432,7 @@ export default function SimKPage() {
                   <p className="text-xs font-semibold text-slate-600">절세 효과 (일반계좌 대비 초과분)</p>
                   <p className="text-xs text-slate-400">0선 위 = 절세계좌 유리 · 아래 = 일반계좌 유리</p>
                 </div>
-                <ResponsiveContainer width="100%" height={150}>
+                <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
                     <defs>
                       <linearGradient id="gradCredit" x1="0" y1="0" x2="0" y2="1">
@@ -452,7 +452,11 @@ export default function SimKPage() {
                     <XAxis dataKey="label" tick={{ fontSize: 9, fill: '#94a3b8' }}
                       interval={Math.max(1, Math.floor(years / 5))} />
                     <YAxis tickFormatter={v => fmt(v * 1e4)} tick={{ fontSize: 11, fill: '#94a3b8' }}
-                      tickCount={5} />
+                      tickCount={5}
+                      domain={[
+                        (dataMin: number) => Math.max(dataMin * 0.8, -Math.max(...chartData.map(d => (d['초과분 (재투자)'] as number) ?? 0)) * 0.3),
+                        (dataMax: number) => dataMax * 1.1,
+                      ]} />
                     <Tooltip
                       formatter={(v: number, name: string) => [fmt(v * 1e4) + '원', name]}
                       contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '11px' }}
