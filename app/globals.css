@@ -60,7 +60,7 @@
   input[type="range"] {
     @apply w-full;
     height: 36px;         /* 터치 영역 확대 */
-    touch-action: pan-x;  /* 수평 스와이프만 허용 (스크롤 방해 방지) */
+    touch-action: pan-y;  /* 수직 스크롤 허용 (슬라이더 터치 스크롤 버그 수정) */
     cursor: pointer;
   }
 

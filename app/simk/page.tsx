@@ -176,11 +176,7 @@ export default function SimKPage() {
       </div>
 
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-3 sm:py-4">
-        <div className="mb-3 sm:mb-4">
-          <h1 className="text-base sm:text-lg font-bold text-slate-800">Sim K — 절세 계좌 시뮬레이터</h1>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-5">
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-5">
 
           {/* ── 왼쪽 패널 ── */}
           <div className="space-y-4">
