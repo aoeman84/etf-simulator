@@ -53,7 +53,7 @@
 
   /* 슬라이더 — 모바일 터치 최적화 */
   input[type="range"] {
-    @apply w-full accent-blue-600;
+    @apply w-full;
     height: 36px;         /* 터치 영역 확대 */
     touch-action: pan-x;  /* 수평 스와이프만 허용 (스크롤 방해 방지) */
     cursor: pointer;
