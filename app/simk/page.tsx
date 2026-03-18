@@ -22,9 +22,9 @@ const DEFAULT_SCENARIO: ScenarioSettings = {
 const SIMK_TICKERS = ['SCHD', 'VOO', 'QQQ']
 
 const tickerColors: Record<string, string> = {
-  SCHD: '#2563eb',
-  VOO:  '#16a34a',
-  QQQ:  '#9333ea',
+  SCHD: '#0ea5e9',
+  VOO:  '#f59e0b',
+  QQQ:  '#8b5cf6',
 }
 
 const TICKER_ACCENT: Record<string, string> = {
@@ -352,7 +352,7 @@ export default function SimKPage() {
                           })}
                         </div>
                       </td>
-                      <td className="px-2 sm:px-3 py-2.5 text-right font-medium text-blue-600 whitespace-nowrap">
+                      <td className="px-2 sm:px-3 py-2.5 text-right font-medium text-sky-500 whitespace-nowrap">
                         {primary ? fmtKRW(primary.totalTaxCredit) : '-'}
                       </td>
                       <td className="px-2 sm:px-3 py-2.5 text-right font-semibold text-slate-800 whitespace-nowrap">
@@ -380,7 +380,7 @@ export default function SimKPage() {
                             <span className="text-slate-400 sm:hidden">{ETF_DATA[ticker].priceCAGR}%</span>
                           </div>
                         </td>
-                        <td className="px-2 sm:px-3 py-2.5 text-right font-medium text-blue-600 whitespace-nowrap">
+                        <td className="px-2 sm:px-3 py-2.5 text-right font-medium text-sky-500 whitespace-nowrap">
                           {fmtKRW(result.totalTaxCredit)}
                         </td>
                         <td className="px-2 sm:px-3 py-2.5 text-right font-semibold text-slate-800 whitespace-nowrap">
@@ -498,9 +498,9 @@ export default function SimKPage() {
                               {isCurrent && <span className="ml-1 text-green-600 font-bold text-xs">● 현재</span>}
                               {row.isaTransfer > 0 && <span className="ml-1 text-blue-500 font-bold">↗ ISA 만기</span>}
                             </td>
-                            <td className="px-3 py-2.5 text-right text-blue-600 whitespace-nowrap">{fmtKRW(row.isaBalance)}</td>
-                            <td className="px-3 py-2.5 text-right text-green-600 whitespace-nowrap">{fmtKRW(row.pensionBalance)}</td>
-                            <td className="px-3 py-2.5 text-right text-purple-600 whitespace-nowrap">{fmtKRW(row.irpBalance)}</td>
+                            <td className="px-3 py-2.5 text-right text-sky-500 whitespace-nowrap">{fmtKRW(row.isaBalance)}</td>
+                            <td className="px-3 py-2.5 text-right text-amber-600 whitespace-nowrap">{fmtKRW(row.pensionBalance)}</td>
+                            <td className="px-3 py-2.5 text-right text-violet-500 whitespace-nowrap">{fmtKRW(row.irpBalance)}</td>
                             <td className="px-3 py-2.5 text-right text-amber-600 font-medium whitespace-nowrap">+{fmtKRW(row.taxCreditThisYear)}</td>
                             <td className="px-3 py-2.5 text-right font-semibold text-slate-700 whitespace-nowrap">{fmtKRW(row.cumulativeTaxCredit)}</td>
                           </tr>
@@ -543,8 +543,8 @@ function AccountCard({
 }: AccountCardProps) {
   const [expanded, setExpanded] = useState(true)
 
-  const colorMap      = { blue: 'text-blue-600',    green: 'text-green-600',    purple: 'text-purple-600'    }
-  const TICKER_COLOR: Record<string, string> = { SCHD: '#2563eb', VOO: '#16a34a', QQQ: '#9333ea' }
+  const colorMap      = { blue: 'text-sky-500',     green: 'text-amber-600',    purple: 'text-violet-500'   }
+  const TICKER_COLOR: Record<string, string> = { SCHD: '#0ea5e9', VOO: '#f59e0b', QQQ: '#8b5cf6' }
 
   const sum = allocSum(state.etfAlloc)
   const valid = sum === 100
@@ -591,7 +591,7 @@ function AccountCard({
       {/* 납입액 슬라이더 + 직접입력 */}
       <AmountInput
         value={amount} min={0} max={max} step={step} unit={unit}
-        accentColor={color === 'blue' ? '#2563eb' : color === 'green' ? '#16a34a' : '#9333ea'}
+        accentColor={color === 'blue' ? '#0ea5e9' : color === 'green' ? '#f59e0b' : '#8b5cf6'}
         onChange={setAmount}
       />
       <div className="text-xs text-slate-400">{sub}</div>
