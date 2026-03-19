@@ -158,6 +158,10 @@ export default function ComparePage() {
                 const last = r?.[r.length - 1]
                 const etf = ETF_DATA[t]
                 if (!last) return null
+                const totalDivKRW = r.reduce((s, row) => s + row.annualDivKRW, 0)
+                const afterTaxPortfolioKRW = last.portfolioKRW - totalDivKRW * 0.154
+                const invested = last.invested
+                const afterTaxGainPct = invested > 0 ? (afterTaxPortfolioKRW - invested) / invested * 100 : 0
                 return (
                   <div key={t} className="card p-4" style={{ borderTop: `3px solid ${ETF_COLORS[t] ?? etf.color}` }}>
                     <div className="flex items-center justify-between mb-3">
@@ -172,6 +176,10 @@ export default function ComparePage() {
                       <div className="flex justify-between">
                         <span className="text-slate-500">수익률</span>
                         <span className="font-semibold text-green-600">+{last.gainPct.toFixed(1)}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-400 text-xs">세후 수익률 <span className="text-slate-300">(배당세 15.4%)</span></span>
+                        <span className="text-xs text-slate-500">+{afterTaxGainPct.toFixed(1)}%</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-slate-500">월 배당금</span>
@@ -230,6 +238,7 @@ export default function ComparePage() {
                       {['현재가', '배당수익률', '배당성장(CAGR)', '주가상승(CAGR)', `${years}년 후 월배당`].map(h => (
                         <th key={h} className="text-left px-4 py-3 text-xs font-medium text-slate-500 whitespace-nowrap">{h}</th>
                       ))}
+                      <th className="text-left px-4 py-3 text-xs font-medium text-orange-400 whitespace-nowrap">세후 월배당</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -256,6 +265,9 @@ export default function ComparePage() {
                           <td className="px-4 py-3 text-blue-600 whitespace-nowrap">{etf.divGrowthCAGR}%</td>
                           <td className="px-4 py-3 text-green-600 whitespace-nowrap">{etf.priceCAGR}%</td>
                           <td className="px-4 py-3 font-medium whitespace-nowrap">{last ? fmtKRW(last.monthlyDivKRW) : '-'}</td>
+                          <td className="px-4 py-3 font-medium text-orange-500 whitespace-nowrap">
+                            {last ? fmtKRW(last.monthlyDivKRW * (1 - 0.154)) : '-'}
+                          </td>
                         </tr>
                       )
                     })}
