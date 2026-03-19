@@ -142,12 +142,23 @@ export function calcCAGR(startBalance: number, endBalance: number, years: number
 
 export function calcMDD(rows: BacktestYearRow[]): number {
   if (rows.length === 0) return 0
-  let peak = rows[0].balance
-  let mdd = 0
+  // DCA에서는 연말 잔액이 납입금 덕분에 항상 고점 갱신할 수 있으므로
+  // year-start 잔액(= 전년 말 잔액) 기준으로 인트라이어 최저점을 계산한다.
+  // 최저점 근사: 기존 잔액 × (1 + r)  — 해당 연도 수익률만 적용, 신규 납입 제외
+  let peak = 0        // year-start 잔액의 최고점
+  let mdd = 0         // 누적 최대 낙폭 (음수)
+  let prevBalance = 0 // 전년 말 잔액 (= 당해 year-start 잔액)
+
   for (const row of rows) {
-    peak = Math.max(peak, row.balance)
-    const drawdown = (row.balance - peak) / peak
-    if (drawdown < mdd) mdd = drawdown
+    peak = Math.max(peak, prevBalance)
+    const r = row.returnPct / 100
+    if (peak > 0 && r < 0) {
+      // 신규 납입 전 기존 잔액의 최저 추정값
+      const intrYearLow = prevBalance * (1 + r)
+      const drawdown = (intrYearLow - peak) / peak
+      if (drawdown < mdd) mdd = drawdown
+    }
+    prevBalance = row.balance
   }
-  return mdd * 100 // percentage, always <= 0
+  return mdd * 100 // 음수, 예: -32.6
 }

@@ -275,8 +275,8 @@ export default function BacktestPage() {
                   평균 {fmtPct(stats.avgReturn)} · 최고 {stats.bestYear.year}년 {fmtPct(stats.bestYear.returnPct)} · 최저 {stats.worstYear.year}년 {fmtPct(stats.worstYear.returnPct)}
                 </div>
               )}
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barCategoryGap="20%">
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="year" tick={{ fontSize: 10, fill: '#94a3b8' }}
                     interval={rows.length > 10 ? Math.floor(rows.length / 8) : 0} />
@@ -286,14 +286,14 @@ export default function BacktestPage() {
                     domain={['auto', 'auto']}
                     tickCount={5}
                   />
-                  <ReferenceLine y={0} stroke="#cbd5e1" strokeWidth={1.5} />
+                  <ReferenceLine y={0} stroke="#475569" strokeWidth={2} />
                   <Tooltip
                     formatter={(v: number) => [`${v.toFixed(1)}%`, '연간 수익률']}
                     contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px' }}
                   />
-                  <Bar dataKey="returnPct" radius={[2, 2, 0, 0]}>
+                  <Bar dataKey="returnPct" radius={[3, 3, 0, 0]} maxBarSize={32}>
                     {rows.map(row => (
-                      <Cell key={row.year} fill={row.returnPct >= 0 ? '#3b82f6' : '#ef4444'} />
+                      <Cell key={row.year} fill={row.returnPct >= 0 ? primaryColor : '#ef4444'} />
                     ))}
                   </Bar>
                 </BarChart>
