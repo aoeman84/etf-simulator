@@ -107,6 +107,15 @@ export default function BacktestPage() {
 
   const primaryColor = ETF_INFO[primaryTicker]?.color ?? '#1d4ed8'
 
+  // 연간 수익률 차트 Y축 domain — 여유 10%p 추가
+  const returnChartDomain = useMemo((): [number, number] => {
+    if (rows.length === 0) return [-10, 60]
+    const minVal = Math.min(...rows.map(r => r.returnPct))
+    const maxVal = Math.max(...rows.map(r => r.returnPct))
+    const pad = Math.max(10, (maxVal - minVal) * 0.15)
+    return [Math.floor(minVal - pad), Math.ceil(maxVal + pad)]
+  }, [rows])
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
@@ -283,7 +292,7 @@ export default function BacktestPage() {
                   <YAxis
                     tickFormatter={v => `${v}%`}
                     tick={{ fontSize: 10, fill: '#94a3b8' }}
-                    domain={['auto', 'auto']}
+                    domain={returnChartDomain}
                     tickCount={5}
                   />
                   <ReferenceLine y={0} stroke="#475569" strokeWidth={2} />
@@ -291,7 +300,7 @@ export default function BacktestPage() {
                     formatter={(v: number) => [`${v.toFixed(1)}%`, '연간 수익률']}
                     contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px' }}
                   />
-                  <Bar dataKey="returnPct" radius={[3, 3, 0, 0]} maxBarSize={32}>
+                  <Bar dataKey="returnPct" radius={[3, 3, 0, 0]} maxBarSize={32} minPointSize={3}>
                     {rows.map(row => (
                       <Cell key={row.year} fill={row.returnPct >= 0 ? primaryColor : '#ef4444'} />
                     ))}
