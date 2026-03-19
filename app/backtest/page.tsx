@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import {
-  ComposedChart, Bar, Cell, LineChart, Line,
+  BarChart, Bar, Cell, LineChart, Line,
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, ReferenceLine, Legend,
 } from 'recharts'
 import Navbar from '@/components/Navbar'
@@ -285,8 +285,7 @@ export default function BacktestPage() {
                 </div>
               )}
               <ResponsiveContainer width="100%" height={220}>
-                <ComposedChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barCategoryGap="20%">
-                  {process.env.NODE_ENV === 'development' && console.log('[BacktestChart] rows:', rows.map(r => ({ year: r.year, returnPct: r.returnPct })))}
+                <BarChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barCategoryGap="20%">
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="year" tick={{ fontSize: 10, fill: '#94a3b8' }}
                     interval={rows.length > 10 ? Math.floor(rows.length / 8) : 0} />
@@ -301,12 +300,12 @@ export default function BacktestPage() {
                     formatter={(v: number) => [`${v.toFixed(1)}%`, '연간 수익률']}
                     contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '12px' }}
                   />
-                  <Bar dataKey="returnPct" radius={[3, 3, 0, 0]} maxBarSize={32} minPointSize={3}>
+                  <Bar dataKey="returnPct" radius={[3, 3, 0, 0]} maxBarSize={32} isAnimationActive={false}>
                     {rows.map(row => (
                       <Cell key={row.year} fill={row.returnPct >= 0 ? primaryColor : '#ef4444'} />
                     ))}
                   </Bar>
-                </ComposedChart>
+                </BarChart>
               </ResponsiveContainer>
             </div>
 
