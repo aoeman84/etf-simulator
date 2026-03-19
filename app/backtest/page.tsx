@@ -3,7 +3,7 @@ import { useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import {
-  BarChart, Bar, Cell, LineChart, Line,
+  ComposedChart, Bar, Cell, LineChart, Line,
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, ReferenceLine, Legend,
 } from 'recharts'
 import Navbar from '@/components/Navbar'
@@ -285,7 +285,8 @@ export default function BacktestPage() {
                 </div>
               )}
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barCategoryGap="20%">
+                <ComposedChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: 0 }} barCategoryGap="20%">
+                  {process.env.NODE_ENV === 'development' && console.log('[BacktestChart] rows:', rows.map(r => ({ year: r.year, returnPct: r.returnPct })))}
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                   <XAxis dataKey="year" tick={{ fontSize: 10, fill: '#94a3b8' }}
                     interval={rows.length > 10 ? Math.floor(rows.length / 8) : 0} />
@@ -305,7 +306,7 @@ export default function BacktestPage() {
                       <Cell key={row.year} fill={row.returnPct >= 0 ? primaryColor : '#ef4444'} />
                     ))}
                   </Bar>
-                </BarChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
 
