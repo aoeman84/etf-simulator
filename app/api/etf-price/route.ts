@@ -25,9 +25,10 @@ export async function GET(req: NextRequest) {
 
   if (!ticker) return NextResponse.json({ error: 'ticker required' }, { status: 400 })
 
-  // ── 기간 조회: start + end → 일별 종가 배열 반환 ──
+  // ── 기간 조회: start + end → 종가 배열 반환 ──
   if (start && end) {
-    const cacheKey = `${ticker}_range_${start}_${end}`
+    const intervalParam = req.nextUrl.searchParams.get('interval') ?? '1d' // '1d' | '1wk'
+    const cacheKey = `${ticker}_range_${start}_${end}_${intervalParam}`
     if (RANGE_CACHE[cacheKey] && Date.now() - RANGE_CACHE[cacheKey].ts < RANGE_TTL) {
       return NextResponse.json({ ticker, history: RANGE_CACHE[cacheKey].history, cached: true })
     }
@@ -35,7 +36,7 @@ export async function GET(req: NextRequest) {
       const period1 = Math.floor(new Date(start).getTime() / 1000)
       const period2 = Math.floor(new Date(end).getTime() / 1000) + 86400
       const res = await fetch(
-        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&period1=${period1}&period2=${period2}`,
+        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${intervalParam}&period1=${period1}&period2=${period2}`,
         { headers: YF_HEADERS, next: { revalidate: 3600 } }
       )
       const data = await res.json()

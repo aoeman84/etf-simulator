@@ -43,7 +43,8 @@ export default function PortfolioPage() {
   const [etfPriceAutoLoaded, setEtfPriceAutoLoaded] = useState(false)
   const [currentFxRate, setCurrentFxRate] = useState(1350)
   const [toast, setToast] = useState('')
-  const [priceHistory, setPriceHistory] = useState<Record<string, { date: string; close: number }[]>>({})
+  const [chartPeriod, setChartPeriod] = useState<'1M'|'6M'|'1Y'|'5Y'|'10Y'>('1Y')
+  const [priceHistoryByPeriod, setPriceHistoryByPeriod] = useState<Record<string, Record<string, { date: string; close: number }[]>>>({})
   const [chartLoading, setChartLoading] = useState(false)
 
   useEffect(() => {
@@ -66,33 +67,39 @@ export default function PortfolioPage() {
     }).catch(() => {})
   }, [])
 
-  // ── 매수 종목 변경 시 1년 주가 히스토리 fetch ──
+  // ── 종목 또는 기간 변경 시 주가 히스토리 fetch ──
   const uniqueTickersKey = [...new Set(purchases.map(p => p.ticker))].sort().join(',')
+  const PERIOD_DAYS: Record<string, number> = { '1M': 30, '6M': 180, '1Y': 365, '5Y': 1825, '10Y': 3650 }
+  const PERIOD_INTERVAL: Record<string, string> = { '1M': '1d', '6M': '1d', '1Y': '1d', '5Y': '1wk', '10Y': '1wk' }
+  const periodFetchKey = `${uniqueTickersKey}__${chartPeriod}`
   useEffect(() => {
     if (!uniqueTickersKey) return
     const tickers = uniqueTickersKey.split(',')
-    const needFetch = tickers.filter(t => !(t in priceHistory))
+    const periodHistory = priceHistoryByPeriod[chartPeriod] ?? {}
+    const needFetch = tickers.filter(t => !(t in periodHistory))
     if (needFetch.length === 0) return
+    const days = PERIOD_DAYS[chartPeriod]
+    const intervalParam = PERIOD_INTERVAL[chartPeriod]
     const endDate = new Date().toISOString().split('T')[0]
-    const startDate = new Date(Date.now() - 365 * 86400 * 1000).toISOString().split('T')[0]
+    const startDate = new Date(Date.now() - days * 86400 * 1000).toISOString().split('T')[0]
     setChartLoading(true)
     Promise.all(
       needFetch.map(ticker =>
-        fetch(`/api/etf-price?ticker=${ticker}&start=${startDate}&end=${endDate}`)
+        fetch(`/api/etf-price?ticker=${ticker}&start=${startDate}&end=${endDate}&interval=${intervalParam}`)
           .then(r => r.json())
           .then(d => ({ ticker, history: d.history ?? [] }))
           .catch(() => ({ ticker, history: [] }))
       )
     ).then(results => {
-      setPriceHistory(prev => {
-        const next = { ...prev }
-        results.forEach(r => { next[r.ticker] = r.history })
-        return next
+      setPriceHistoryByPeriod(prev => {
+        const pd = { ...(prev[chartPeriod] ?? {}) }
+        results.forEach(r => { pd[r.ticker] = r.history })
+        return { ...prev, [chartPeriod]: pd }
       })
       setChartLoading(false)
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [uniqueTickersKey])
+  }, [periodFetchKey])
 
   async function fetchEtfPriceForDate(date: string, ticker: string) {
     if (!date || new Date(date) > new Date()) return
@@ -199,22 +206,23 @@ export default function PortfolioPage() {
     return { currentValueKRW, gainKRW, gainPct }
   }
 
-  // ── 주가 차트 데이터 생성 (1년 실제 주가, 정규화) ──
+  // ── 주가 차트 데이터 생성 (실제 주가, 정규화) ──
   function buildPriceChartData() {
     const tickers = [...new Set(purchases.map(p => p.ticker))]
+    const periodHistory = priceHistoryByPeriod[chartPeriod] ?? {}
     if (tickers.length === 0) return null
-    if (tickers.some(t => !priceHistory[t])) return null // 로딩 중
+    if (tickers.some(t => !periodHistory[t])) return null // 로딩 중
 
     // 모든 날짜 수집 후 정렬
     const allDatesSet = new Set<string>()
-    tickers.forEach(t => priceHistory[t]?.forEach(d => allDatesSet.add(d.date)))
+    tickers.forEach(t => periodHistory[t]?.forEach(d => allDatesSet.add(d.date)))
     const allDates = [...allDatesSet].sort()
     if (allDates.length === 0) return null
 
     // 첫 종가 기준 정규화 (% 변동)
     const firstClose: Record<string, number> = {}
     tickers.forEach(t => {
-      const h = priceHistory[t]
+      const h = periodHistory[t]
       if (h?.length) firstClose[t] = h[0].close
     })
 
@@ -222,7 +230,7 @@ export default function PortfolioPage() {
     const lookup: Record<string, Record<string, number>> = {}
     tickers.forEach(t => {
       lookup[t] = {}
-      priceHistory[t]?.forEach(d => { lookup[t][d.date] = d.close })
+      periodHistory[t]?.forEach(d => { lookup[t][d.date] = d.close })
     })
 
     const data = allDates.map(date => {
@@ -251,11 +259,17 @@ export default function PortfolioPage() {
   const totalCurrent = purchases.reduce((s, p) => s + calcReturn(p).currentValueKRW, 0)
   const totalGainPct = totalInvested > 0 ? ((totalCurrent - totalInvested) / totalInvested) * 100 : 0
 
-  const tickerSummary = purchases.reduce<Record<string, { invested: number; current: number }>>((acc, p) => {
+  const tickerSummary = purchases.reduce<Record<string, { invested: number; current: number; totalUSD: number; totalShares: number }>>((acc, p) => {
+    const etf = ETF_DATA[p.ticker]
     const { currentValueKRW } = calcReturn(p)
-    if (!acc[p.ticker]) acc[p.ticker] = { invested: 0, current: 0 }
+    const purchasePrice = p.etfPrice ?? etf.price
+    const usdInvested = (p.amountKRW * 10000) / p.fxRate
+    const shares = usdInvested / purchasePrice
+    if (!acc[p.ticker]) acc[p.ticker] = { invested: 0, current: 0, totalUSD: 0, totalShares: 0 }
     acc[p.ticker].invested += p.amountKRW * 10000
     acc[p.ticker].current += currentValueKRW
+    acc[p.ticker].totalUSD += usdInvested
+    acc[p.ticker].totalShares += shares
     return acc
   }, {})
 
@@ -480,22 +494,36 @@ export default function PortfolioPage() {
                   {Object.keys(tickerSummary).length > 0 && (
                     <div className="mt-4 pt-4 border-t border-slate-100">
                       <div className="text-xs text-slate-500 mb-2">ETF별 수익률 breakdown</div>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {Object.entries(tickerSummary).map(([t, v]) => {
                           const gainPct = ((v.current - v.invested) / v.invested) * 100
                           const weight = totalCurrent > 0 ? (v.current / totalCurrent) * 100 : 0
                           const etf = ETF_DATA[t]
+                          const avgPrice = v.totalShares > 0 ? v.totalUSD / v.totalShares : null
+                          const avgPriceGainPct = avgPrice && etf?.price ? ((etf.price - avgPrice) / avgPrice) * 100 : null
                           return (
-                            <div key={t} className="flex items-center gap-3">
-                              <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: etf?.color ?? '#94a3b8' }} />
-                              <span className="text-sm font-medium w-12">{t}</span>
-                              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{ width: `${weight}%`, background: etf?.color ?? '#94a3b8' }} />
+                            <div key={t}>
+                              <div className="flex items-center gap-3 mb-1">
+                                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: etf?.color ?? '#94a3b8' }} />
+                                <span className="text-sm font-medium w-12">{t}</span>
+                                <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                  <div className="h-full rounded-full" style={{ width: `${weight}%`, background: etf?.color ?? '#94a3b8' }} />
+                                </div>
+                                <span className="text-xs text-slate-500 w-10 text-right">{weight.toFixed(0)}%</span>
+                                <span className={`text-xs font-semibold w-14 text-right ${gainPct >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                  {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(1)}%
+                                </span>
                               </div>
-                              <span className="text-xs text-slate-500 w-10 text-right">{weight.toFixed(0)}%</span>
-                              <span className={`text-xs font-semibold w-14 text-right ${gainPct >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                                {gainPct >= 0 ? '+' : ''}{gainPct.toFixed(1)}%
-                              </span>
+                              {avgPrice !== null && avgPriceGainPct !== null && (
+                                <div className="ml-5 text-xs text-slate-400">
+                                  평균단가 <span className="text-slate-600 font-medium">${avgPrice.toFixed(2)}</span>
+                                  {' · '}
+                                  주가 기준
+                                  <span className={`font-semibold ml-1 ${avgPriceGainPct >= 0 ? 'text-green-500' : 'text-red-400'}`}>
+                                    {avgPriceGainPct >= 0 ? '+' : ''}{avgPriceGainPct.toFixed(1)}%
+                                  </span>
+                                </div>
+                              )}
                             </div>
                           )
                         })}
@@ -520,12 +548,25 @@ export default function PortfolioPage() {
                   if (!chartResult) return null
                   const { data, tickers, purchasesByDate } = chartResult
                   const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
-                  // X축: ~252 일봉 → 대략 월 1개 라벨
                   const xInterval = Math.max(0, Math.floor(data.length / 12) - 1)
+                  const periods: ('1M'|'6M'|'1Y'|'5Y'|'10Y')[] = ['1M','6M','1Y','5Y','10Y']
                   return (
                     <div className="card p-4">
-                      <h3 className="text-sm font-semibold text-slate-700 mb-1">주가 추이 (최근 1년)</h3>
-                      <p className="text-xs text-slate-400 mb-3">1년 전 대비 % 변동 · Yahoo Finance 실제 종가</p>
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-semibold text-slate-700">주가 추이</h3>
+                        <div className="flex gap-1">
+                          {periods.map(p => (
+                            <button key={p} onClick={() => setChartPeriod(p)}
+                              className={`text-xs px-2 py-0.5 rounded-md font-medium transition-all ${
+                                chartPeriod === p
+                                  ? 'bg-blue-600 text-white'
+                                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >{p}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-400 mb-3">기간 시작 대비 % 변동 · Yahoo Finance 실제 종가</p>
                       <ResponsiveContainer width="100%" height={250}>
                         <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
