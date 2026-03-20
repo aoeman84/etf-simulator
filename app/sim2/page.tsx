@@ -290,44 +290,63 @@ export default function Sim2Page() {
               <div className="card p-5">
                 <h3 className="text-sm font-medium text-slate-500 mb-4">세금 영향 분석</h3>
 
-                {/* 가로 플로우 */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-slate-50 rounded-xl p-3 text-center">
+                {/* 플로우: 데스크탑 가로 / 모바일 세로 */}
+                <div className="flex flex-col sm:flex-row items-stretch gap-2">
+
+                  {/* 세전 */}
+                  <div className="flex-1 bg-slate-50 rounded-xl p-4 flex flex-col items-center justify-center text-center min-h-[96px]">
                     <div className="text-xs text-slate-400 mb-1">세전 월 배당</div>
-                    <div className="text-lg font-bold text-slate-400 line-through decoration-red-400">
+                    <div className="text-lg font-bold text-slate-400">
                       {fmtKRW(last.monthlyDivKRW)}
                     </div>
                   </div>
-                  <div className="flex items-center justify-center">
-                    <div className="text-center w-full">
-                      <div className="text-2xl mb-1">→</div>
-                      <div className="text-xs text-red-500 font-medium">
-                        -{fmtKRW(last.tax.totalDivTaxKRW / 12)}/월 세금
-                      </div>
-                      {last.tax.exceedsThreshold && (
-                        <div className="text-xs text-orange-500 mt-0.5">⚠️ 종합과세 대상</div>
+
+                  {/* 화살표 */}
+                  <div className="flex items-center justify-center text-slate-300 text-2xl
+                                  sm:flex-col sm:self-center
+                                  flex-row">
+                    <span className="sm:hidden">↓</span>
+                    <span className="hidden sm:inline">→</span>
+                  </div>
+
+                  {/* 세금 박스 */}
+                  <div className="flex-1 bg-red-50 rounded-xl p-4 flex flex-col items-center justify-center text-center min-h-[96px]">
+                    <div className="text-sm font-semibold text-red-500 mb-1.5">
+                      -{fmtKRW(Math.round(last.tax.totalDivTaxKRW / 12))}/월 세금
+                    </div>
+                    {last.tax.exceedsThreshold && (
+                      <div className="text-xs text-orange-500 mb-1.5">⚠️ 종합과세 대상</div>
+                    )}
+                    <div className="space-y-0.5 text-left w-full px-1">
+                      {last.tax.withholdingTaxKRW > 0 && (
+                        <div className="text-sm text-slate-500">
+                          › 배당세(원천징수) -{fmtKRW(Math.round(last.tax.withholdingTaxKRW / 12))}
+                        </div>
                       )}
-                      {/* 세부 항목 */}
-                      <div className="mt-2 space-y-0.5 text-left inline-block">
-                        {last.tax.withholdingTaxKRW > 0 && (
-                          <div className="text-xs text-slate-400">
-                            › 배당세(원천징수) -{fmtKRW(Math.round(last.tax.withholdingTaxKRW / 12))}
-                          </div>
-                        )}
-                        {last.tax.surchargeKRW > 0 && (
-                          <div className="text-xs text-orange-400 font-medium">
-                            › 종합과세 추가분 -{fmtKRW(Math.round(last.tax.surchargeKRW / 12))}
-                          </div>
-                        )}
-                      </div>
+                      {last.tax.surchargeKRW > 0 && (
+                        <div className="text-sm text-orange-500 font-medium">
+                          › 종합과세 추가분 -{fmtKRW(Math.round(last.tax.surchargeKRW / 12))}
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <div className="bg-blue-50 rounded-xl p-3 text-center">
+
+                  {/* 화살표 */}
+                  <div className="flex items-center justify-center text-slate-300 text-2xl
+                                  sm:flex-col sm:self-center
+                                  flex-row">
+                    <span className="sm:hidden">↓</span>
+                    <span className="hidden sm:inline">→</span>
+                  </div>
+
+                  {/* 세후 */}
+                  <div className="flex-1 bg-blue-50 rounded-xl p-4 flex flex-col items-center justify-center text-center min-h-[96px]">
                     <div className="text-xs text-slate-400 mb-1">세후 월 배당</div>
                     <div className="text-lg font-bold text-blue-600">
                       {fmtKRW(last.tax.afterTaxMonthlyDivKRW)}
                     </div>
                   </div>
+
                 </div>
 
                 {/* 종합과세 상태 배지 */}
