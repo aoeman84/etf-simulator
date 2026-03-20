@@ -289,31 +289,66 @@ export default function Sim2Page() {
             {tax.enabled && last && (
               <div className="card p-5">
                 <h3 className="text-sm font-medium text-slate-500 mb-4">세금 영향 분석</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-slate-50 rounded-xl p-3 text-center">
-                    <div className="text-xs text-slate-400 mb-1">세전 월 배당</div>
-                    <div className="text-lg font-bold text-slate-400 line-through decoration-red-400">
-                      {fmtKRW(last.monthlyDivKRW)}
-                    </div>
+
+                {/* 트리 구조 */}
+                <div className="bg-slate-50 rounded-xl p-4">
+                  {/* 세전 월배당 */}
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-sm font-medium text-slate-600">세전 월배당</span>
+                    <span className="text-base font-bold text-slate-700">{fmtKRW(last.monthlyDivKRW)}</span>
                   </div>
-                  <div className="flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-2xl mb-1">→</div>
-                      <div className="text-xs text-red-500 font-medium">
-                        -{fmtKRW(last.tax.totalDivTaxKRW / 12)}/월 세금
-                      </div>
-                      {last.tax.exceedsThreshold && (
-                        <div className="text-xs text-orange-500 mt-0.5">⚠️ 종합과세 대상</div>
+
+                  {/* ├ 배당세 */}
+                  <div className="flex justify-between items-center mb-2 pl-3 border-l-2 border-slate-200">
+                    <span className="text-xs text-slate-500">
+                      ├ 배당세 <span className="text-slate-400">(원천징수 15%)</span>
+                    </span>
+                    <span className="text-xs font-semibold text-red-500">
+                      {last.tax.withholdingTaxKRW > 0
+                        ? `-${fmtKRW(Math.round(last.tax.withholdingTaxKRW / 12))}/월`
+                        : <span className="text-slate-400">없음</span>}
+                    </span>
+                  </div>
+
+                  {/* ├ 종합과세 */}
+                  <div className="flex justify-between items-center mb-3 pl-3 border-l-2 border-slate-200">
+                    <span className="text-xs text-slate-500 flex items-center gap-1">
+                      ├ 종합과세 추가분
+                      {last.tax.exceedsThreshold && tax.comprehensiveIncomeTax && (
+                        <span className="text-orange-400">⚠️</span>
                       )}
-                    </div>
+                    </span>
+                    <span className={`text-xs font-semibold ${last.tax.surchargeKRW > 0 ? 'text-orange-500' : 'text-slate-400'}`}>
+                      {last.tax.surchargeKRW > 0
+                        ? `-${fmtKRW(Math.round(last.tax.surchargeKRW / 12))}/월`
+                        : '없음'}
+                    </span>
                   </div>
-                  <div className="bg-blue-50 rounded-xl p-3 text-center">
-                    <div className="text-xs text-slate-400 mb-1">세후 월 배당</div>
-                    <div className="text-lg font-bold text-blue-600">
-                      {fmtKRW(last.tax.afterTaxMonthlyDivKRW)}
-                    </div>
+
+                  {/* └ 세후 월배당 */}
+                  <div className="flex justify-between items-center pt-3 border-t border-slate-200">
+                    <span className="text-sm font-semibold text-slate-700">└ 세후 월배당</span>
+                    <span className="text-base font-bold text-blue-600">{fmtKRW(last.tax.afterTaxMonthlyDivKRW)}</span>
                   </div>
                 </div>
+
+                {/* 종합과세 상태 배지 */}
+                {last.tax.exceedsThreshold && tax.comprehensiveIncomeTax ? (
+                  <div className="mt-3 flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-xl px-4 py-2.5">
+                    <span className="text-sm">⚠️</span>
+                    <span className="text-xs text-orange-600 font-medium">
+                      종합과세 대상 · 연 {fmtKRW(last.tax.financialIncomeKRW - 20_000_000)} 초과
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-3 flex items-center gap-2 bg-green-50 border border-green-100 rounded-xl px-4 py-2.5">
+                    <span className="text-sm">✅</span>
+                    <span className="text-xs text-green-600 font-medium">
+                      종합과세 없음 (연 배당 2,000만원 이하)
+                    </span>
+                  </div>
+                )}
+
                 <p className="text-xs text-slate-400 mt-3 text-center">
                   * 원천징수{tax.comprehensiveIncomeTax ? ' + 종합소득세' : ''} 반영 기준 역산
                 </p>
