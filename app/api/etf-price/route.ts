@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const CACHE: Record<string, { price: number; change: number; changePct: number; ts: number }> = {}
 const HIST_CACHE: Record<string, { price: number; tradingDate: string; ts: number }> = {}
+const RANGE_CACHE: Record<string, { history: { date: string; close: number }[]; ts: number }> = {}
 const TTL = 5 * 60 * 1000
 const HIST_TTL = 24 * 60 * 60 * 1000
+const RANGE_TTL = 60 * 60 * 1000 // 1시간
 
 // 정적 전일종가 (fallback용)
 const PREV_CLOSE: Record<string, number> = {
@@ -18,8 +20,39 @@ const YF_HEADERS = {
 export async function GET(req: NextRequest) {
   const ticker = req.nextUrl.searchParams.get('ticker')?.toUpperCase()
   const date = req.nextUrl.searchParams.get('date') // YYYY-MM-DD
+  const start = req.nextUrl.searchParams.get('start') // YYYY-MM-DD
+  const end = req.nextUrl.searchParams.get('end')     // YYYY-MM-DD
 
   if (!ticker) return NextResponse.json({ error: 'ticker required' }, { status: 400 })
+
+  // ── 기간 조회: start + end → 일별 종가 배열 반환 ──
+  if (start && end) {
+    const cacheKey = `${ticker}_range_${start}_${end}`
+    if (RANGE_CACHE[cacheKey] && Date.now() - RANGE_CACHE[cacheKey].ts < RANGE_TTL) {
+      return NextResponse.json({ ticker, history: RANGE_CACHE[cacheKey].history, cached: true })
+    }
+    try {
+      const period1 = Math.floor(new Date(start).getTime() / 1000)
+      const period2 = Math.floor(new Date(end).getTime() / 1000) + 86400
+      const res = await fetch(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&period1=${period1}&period2=${period2}`,
+        { headers: YF_HEADERS, next: { revalidate: 3600 } }
+      )
+      const data = await res.json()
+      const result = data?.chart?.result?.[0]
+      const timestamps: number[] = result?.timestamp ?? []
+      const closes: number[] = result?.indicators?.quote?.[0]?.close ?? []
+      const history = timestamps
+        .map((ts, i) => ({
+          date: new Date(ts * 1000).toISOString().split('T')[0],
+          close: closes[i] != null ? Math.round(closes[i] * 100) / 100 : null,
+        }))
+        .filter((d): d is { date: string; close: number } => d.close !== null && d.close > 0)
+      RANGE_CACHE[cacheKey] = { history, ts: Date.now() }
+      return NextResponse.json({ ticker, history, cached: false })
+    } catch {}
+    return NextResponse.json({ ticker, history: [], error: 'fetch failed' })
+  }
 
   // ── 날짜 지정 시 역사적 종가 조회 ──
   if (date) {

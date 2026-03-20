@@ -6,7 +6,7 @@ import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { ETF_DATA, ETF_DATA_UPDATED_AT, fmtKRW } from '@/lib/simulator'
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
+  LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from 'recharts'
 
 interface SavedPortfolio {
@@ -43,6 +43,8 @@ export default function PortfolioPage() {
   const [etfPriceAutoLoaded, setEtfPriceAutoLoaded] = useState(false)
   const [currentFxRate, setCurrentFxRate] = useState(1350)
   const [toast, setToast] = useState('')
+  const [priceHistory, setPriceHistory] = useState<Record<string, { date: string; close: number }[]>>({})
+  const [chartLoading, setChartLoading] = useState(false)
 
   useEffect(() => {
     fetch('/api/portfolio')
@@ -63,6 +65,34 @@ export default function PortfolioPage() {
       if (d.rate) setCurrentFxRate(d.rate)
     }).catch(() => {})
   }, [])
+
+  // ── 매수 종목 변경 시 1년 주가 히스토리 fetch ──
+  const uniqueTickersKey = [...new Set(purchases.map(p => p.ticker))].sort().join(',')
+  useEffect(() => {
+    if (!uniqueTickersKey) return
+    const tickers = uniqueTickersKey.split(',')
+    const needFetch = tickers.filter(t => !(t in priceHistory))
+    if (needFetch.length === 0) return
+    const endDate = new Date().toISOString().split('T')[0]
+    const startDate = new Date(Date.now() - 365 * 86400 * 1000).toISOString().split('T')[0]
+    setChartLoading(true)
+    Promise.all(
+      needFetch.map(ticker =>
+        fetch(`/api/etf-price?ticker=${ticker}&start=${startDate}&end=${endDate}`)
+          .then(r => r.json())
+          .then(d => ({ ticker, history: d.history ?? [] }))
+          .catch(() => ({ ticker, history: [] }))
+      )
+    ).then(results => {
+      setPriceHistory(prev => {
+        const next = { ...prev }
+        results.forEach(r => { next[r.ticker] = r.history })
+        return next
+      })
+      setChartLoading(false)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uniqueTickersKey])
 
   async function fetchEtfPriceForDate(date: string, ticker: string) {
     if (!date || new Date(date) > new Date()) return
@@ -169,63 +199,52 @@ export default function PortfolioPage() {
     return { currentValueKRW, gainKRW, gainPct }
   }
 
-  // ── 수익 추이 차트 데이터 생성 ──
-  function buildGrowthChartData() {
-    const sorted = [...purchases].sort((a, b) => a.date.localeCompare(b.date))
-    const tickers = [...new Set(sorted.map(p => p.ticker))]
+  // ── 주가 차트 데이터 생성 (1년 실제 주가, 정규화) ──
+  function buildPriceChartData() {
+    const tickers = [...new Set(purchases.map(p => p.ticker))]
+    if (tickers.length === 0) return null
+    if (tickers.some(t => !priceHistory[t])) return null // 로딩 중
 
-    // 매수일 ~ 오늘 월별 라벨
-    const start = new Date(sorted[0].date)
-    const today = new Date()
-    const months: string[] = []
-    const cur = new Date(start.getFullYear(), start.getMonth(), 1)
-    while (cur <= today) {
-      months.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`)
-      cur.setMonth(cur.getMonth() + 1)
-    }
-    const todayYM = today.toISOString().slice(0, 7)
-    if (!months.includes(todayYM)) months.push(todayYM)
+    // 모든 날짜 수집 후 정렬
+    const allDatesSet = new Set<string>()
+    tickers.forEach(t => priceHistory[t]?.forEach(d => allDatesSet.add(d.date)))
+    const allDates = [...allDatesSet].sort()
+    if (allDates.length === 0) return null
 
-    const todayTs = today.getTime()
-
-    // 매수 시점 월 (dot 표시용)
-    const purchaseMonthsByTicker: Record<string, Set<string>> = {}
-    sorted.forEach(p => {
-      if (!purchaseMonthsByTicker[p.ticker]) purchaseMonthsByTicker[p.ticker] = new Set()
-      purchaseMonthsByTicker[p.ticker].add(p.date.slice(0, 7))
+    // 첫 종가 기준 정규화 (% 변동)
+    const firstClose: Record<string, number> = {}
+    tickers.forEach(t => {
+      const h = priceHistory[t]
+      if (h?.length) firstClose[t] = h[0].close
     })
 
-    const data = months.map(month => {
-      const monthTs = new Date(month + '-15').getTime() // 월 중간값 기준
-      const row: Record<string, any> = { month }
+    // 날짜별 빠른 조회 테이블
+    const lookup: Record<string, Record<string, number>> = {}
+    tickers.forEach(t => {
+      lookup[t] = {}
+      priceHistory[t]?.forEach(d => { lookup[t][d.date] = d.close })
+    })
 
-      tickers.forEach(ticker => {
-        const etf = ETF_DATA[ticker]
-        const currentPrice = etf.price
-        const relevant = sorted.filter(p => p.ticker === ticker && p.date.slice(0, 7) <= month)
-        if (relevant.length === 0) { row[ticker] = null; return }
-
-        let totalValue = 0
-        relevant.forEach(p => {
-          const purchasePrice = p.etfPrice ?? currentPrice
-          const purchaseTs = new Date(p.date).getTime()
-          const shares = (p.amountKRW * 10000) / p.fxRate / purchasePrice
-          // 매수일~오늘 사이를 선형 보간 (역사적 API 없이 추이 근사)
-          const progress = todayTs > purchaseTs
-            ? Math.min(1, (monthTs - purchaseTs) / (todayTs - purchaseTs))
-            : 1
-          const interpPrice = purchasePrice + progress * (currentPrice - purchasePrice)
-          totalValue += shares * Math.max(interpPrice, 0) * currentFxRate
-        })
-
-        row[ticker] = Math.round(totalValue)
-        row[`${ticker}_dot`] = purchaseMonthsByTicker[ticker]?.has(month) ?? false
+    const data = allDates.map(date => {
+      const row: Record<string, any> = { date }
+      tickers.forEach(t => {
+        const close = lookup[t][date]
+        if (close != null && firstClose[t]) {
+          row[t] = Math.round(((close / firstClose[t]) - 1) * 1000) / 10 // % change, 소수 1자리
+          row[`${t}_price`] = close
+        }
       })
-
       return row
     })
 
-    return { data, tickers, purchaseMonthsByTicker }
+    // 매수일별 그룹핑 (ReferenceLine 중복 방지)
+    const purchasesByDate = purchases.reduce<Record<string, string[]>>((acc, p) => {
+      if (!acc[p.date]) acc[p.date] = []
+      if (!acc[p.date].includes(p.ticker)) acc[p.date].push(p.ticker)
+      return acc
+    }, {})
+
+    return { data, tickers, purchasesByDate }
   }
 
   const totalInvested = purchases.reduce((s, p) => s + p.amountKRW * 10000, 0)
@@ -485,51 +504,77 @@ export default function PortfolioPage() {
                   )}
                 </div>
 
-                {/* ── 수익 추이 라인 차트 ── */}
-                {purchases.length < 2 ? (
-                  <div className="card p-6 text-center text-xs text-slate-400">
-                    매수 기록을 2개 이상 추가하면 수익 추이 차트가 표시됩니다
-                  </div>
-                ) : (() => {
-                  const { data, tickers } = buildGrowthChartData()
-                  const fmtAxis = (v: number) => v >= 1e8 ? `${(v / 1e8).toFixed(0)}억` : `${(v / 1e4).toFixed(0)}만`
-                  // X축 라벨: 많으면 간격 조정
-                  const interval = data.length > 24 ? 5 : data.length > 12 ? 2 : 0
+                {/* ── 주가 차트 (1년 실제 주가) ── */}
+                {(() => {
+                  if (purchases.length === 0) return (
+                    <div className="card p-6 text-center text-xs text-slate-400">
+                      매수 기록을 추가하면 주가 차트가 표시됩니다
+                    </div>
+                  )
+                  if (chartLoading) return (
+                    <div className="card p-6 text-center text-xs text-slate-400 animate-pulse">
+                      주가 데이터 로딩 중...
+                    </div>
+                  )
+                  const chartResult = buildPriceChartData()
+                  if (!chartResult) return null
+                  const { data, tickers, purchasesByDate } = chartResult
+                  const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
+                  // X축: ~252 일봉 → 대략 월 1개 라벨
+                  const xInterval = Math.max(0, Math.floor(data.length / 12) - 1)
                   return (
                     <div className="card p-4">
-                      <h3 className="text-sm font-semibold text-slate-700 mb-4">수익 추이</h3>
-                      <ResponsiveContainer width="100%" height={240}>
+                      <h3 className="text-sm font-semibold text-slate-700 mb-1">주가 추이 (최근 1년)</h3>
+                      <p className="text-xs text-slate-400 mb-3">1년 전 대비 % 변동 · Yahoo Finance 실제 종가</p>
+                      <ResponsiveContainer width="100%" height={250}>
                         <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                          <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#94a3b8' }} interval={interval} />
-                          <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 10, fill: '#94a3b8' }} width={48} />
+                          <XAxis
+                            dataKey="date"
+                            tickFormatter={d => d.slice(0, 7)}
+                            interval={xInterval}
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                          />
+                          <YAxis
+                            tickFormatter={fmtPct}
+                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            width={52}
+                          />
                           <Tooltip
-                            formatter={(v: number, name: string) => [fmtKRW(v), name]}
-                            labelStyle={{ fontSize: 11, color: '#64748b' }}
-                            contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: 12 }}
+                            content={({ active, payload, label }) => {
+                              if (!active || !payload?.length) return null
+                              return (
+                                <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: 10, padding: '8px 12px', fontSize: 11 }}>
+                                  <div style={{ color: '#64748b', marginBottom: 4 }}>{label}</div>
+                                  {payload.filter((p: any) => !String(p.dataKey).includes('_')).map((p: any) => (
+                                    <div key={p.dataKey} style={{ color: p.color, display: 'flex', gap: 8, justifyContent: 'space-between', minWidth: 140 }}>
+                                      <span className="font-semibold">{p.dataKey}</span>
+                                      <span>${p.payload[`${p.dataKey}_price`]?.toFixed(2)}</span>
+                                      <span>{p.value >= 0 ? '+' : ''}{p.value?.toFixed(1)}%</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )
+                            }}
                           />
                           <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
-                          {tickers.map(t => {
-                            const color = ETF_DATA[t]?.color ?? '#94a3b8'
-                            return (
-                              <Line key={t} type="monotone" dataKey={t}
-                                stroke={color} strokeWidth={2.5}
-                                connectNulls
-                                isAnimationActive={false}
-                                dot={(dotProps: any) => {
-                                  const { cx, cy, payload, index } = dotProps
-                                  if (!payload[`${t}_dot`]) return <circle key={index} r={0} cx={cx} cy={cy} fill="none" />
-                                  return <circle key={index} cx={cx} cy={cy} r={5} fill={color} stroke="white" strokeWidth={2} />
-                                }}
-                                activeDot={{ r: 4 }}
-                              />
-                            )
-                          })}
+                          {/* 매수일 세로 점선 */}
+                          {Object.entries(purchasesByDate).map(([date, tkrs]) => (
+                            <ReferenceLine
+                              key={date} x={date}
+                              stroke="#94a3b8" strokeDasharray="4 3" strokeWidth={1.5}
+                              label={{ value: tkrs.join('/'), position: 'insideTopRight', fontSize: 8, fill: '#94a3b8' }}
+                            />
+                          ))}
+                          {tickers.map(t => (
+                            <Line key={t} type="monotone" dataKey={t}
+                              stroke={ETF_DATA[t]?.color ?? '#94a3b8'}
+                              strokeWidth={2} dot={false} activeDot={{ r: 4 }}
+                              connectNulls isAnimationActive={false}
+                            />
+                          ))}
                         </LineChart>
                       </ResponsiveContainer>
-                      <p className="text-xs text-slate-400 text-center mt-2">
-                        * 매수가↔현재가 선형 보간 추이 · 실제 주가 흐름과 다를 수 있음
-                      </p>
                     </div>
                   )
                 })()}
