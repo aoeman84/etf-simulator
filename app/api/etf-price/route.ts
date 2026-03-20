@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 const CACHE: Record<string, { price: number; change: number; changePct: number; ts: number }> = {}
-const HIST_CACHE: Record<string, { price: number; ts: number }> = {}
+const HIST_CACHE: Record<string, { price: number; tradingDate: string; ts: number }> = {}
 const TTL = 5 * 60 * 1000
 const HIST_TTL = 24 * 60 * 60 * 1000
 
@@ -25,24 +25,43 @@ export async function GET(req: NextRequest) {
   if (date) {
     const cacheKey = `${ticker}_${date}`
     if (HIST_CACHE[cacheKey] && Date.now() - HIST_CACHE[cacheKey].ts < HIST_TTL) {
-      return NextResponse.json({ ticker, price: HIST_CACHE[cacheKey].price, date, cached: true })
+      const c = HIST_CACHE[cacheKey]
+      return NextResponse.json({ ticker, price: c.price, date, tradingDate: c.tradingDate, cached: true })
     }
     try {
+      // 요청일 기준 ±5거래일 범위로 넓혀서 조회 (휴장일 대응)
       const d = new Date(date)
-      const period1 = Math.floor(d.getTime() / 1000)
-      const period2 = period1 + 86400
+      const period1 = Math.floor(d.getTime() / 1000) - 5 * 86400
+      const period2 = Math.floor(d.getTime() / 1000) + 5 * 86400
       const res = await fetch(
         `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&period1=${period1}&period2=${period2}`,
         { headers: YF_HEADERS, next: { revalidate: 86400 } }
       )
       const data = await res.json()
       const result = data?.chart?.result?.[0]
-      const close = result?.indicators?.quote?.[0]?.close?.[0]
-        ?? result?.meta?.regularMarketPrice
-      if (close && close > 0) {
-        const price = Math.round(close * 100) / 100
-        HIST_CACHE[cacheKey] = { price, ts: Date.now() }
-        return NextResponse.json({ ticker, price, date, cached: false })
+      const timestamps: number[] = result?.timestamp ?? []
+      const closes: number[] = result?.indicators?.quote?.[0]?.close ?? []
+
+      if (timestamps.length > 0 && closes.length > 0) {
+        const targetTs = Math.floor(d.getTime() / 1000)
+        // 요청 날짜보다 작거나 같은 가장 가까운 거래일 선택
+        let bestIdx = 0
+        let bestDiff = Infinity
+        for (let i = 0; i < timestamps.length; i++) {
+          if (closes[i] == null) continue
+          const diff = targetTs - timestamps[i]
+          if (diff >= 0 && diff < bestDiff) {
+            bestDiff = diff
+            bestIdx = i
+          }
+        }
+        const close = closes[bestIdx]
+        if (close && close > 0) {
+          const price = Math.round(close * 100) / 100
+          const tradingDate = new Date(timestamps[bestIdx] * 1000).toISOString().split('T')[0]
+          HIST_CACHE[cacheKey] = { price, tradingDate, ts: Date.now() }
+          return NextResponse.json({ ticker, price, date, tradingDate, cached: false })
+        }
       }
     } catch {}
     return NextResponse.json({ ticker, price: null, date, fallback: true })
