@@ -5,6 +5,9 @@ import { redirect, useRouter } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { ETF_DATA, ETF_DATA_UPDATED_AT, fmtKRW } from '@/lib/simulator'
+import {
+  LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
+} from 'recharts'
 
 interface SavedPortfolio {
   id: string
@@ -164,6 +167,65 @@ export default function PortfolioPage() {
     const gainKRW = currentValueKRW - p.amountKRW * 10000
     const gainPct = (gainKRW / (p.amountKRW * 10000)) * 100
     return { currentValueKRW, gainKRW, gainPct }
+  }
+
+  // ── 수익 추이 차트 데이터 생성 ──
+  function buildGrowthChartData() {
+    const sorted = [...purchases].sort((a, b) => a.date.localeCompare(b.date))
+    const tickers = [...new Set(sorted.map(p => p.ticker))]
+
+    // 매수일 ~ 오늘 월별 라벨
+    const start = new Date(sorted[0].date)
+    const today = new Date()
+    const months: string[] = []
+    const cur = new Date(start.getFullYear(), start.getMonth(), 1)
+    while (cur <= today) {
+      months.push(`${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}`)
+      cur.setMonth(cur.getMonth() + 1)
+    }
+    const todayYM = today.toISOString().slice(0, 7)
+    if (!months.includes(todayYM)) months.push(todayYM)
+
+    const todayTs = today.getTime()
+
+    // 매수 시점 월 (dot 표시용)
+    const purchaseMonthsByTicker: Record<string, Set<string>> = {}
+    sorted.forEach(p => {
+      if (!purchaseMonthsByTicker[p.ticker]) purchaseMonthsByTicker[p.ticker] = new Set()
+      purchaseMonthsByTicker[p.ticker].add(p.date.slice(0, 7))
+    })
+
+    const data = months.map(month => {
+      const monthTs = new Date(month + '-15').getTime() // 월 중간값 기준
+      const row: Record<string, any> = { month }
+
+      tickers.forEach(ticker => {
+        const etf = ETF_DATA[ticker]
+        const currentPrice = etf.price
+        const relevant = sorted.filter(p => p.ticker === ticker && p.date.slice(0, 7) <= month)
+        if (relevant.length === 0) { row[ticker] = null; return }
+
+        let totalValue = 0
+        relevant.forEach(p => {
+          const purchasePrice = p.etfPrice ?? currentPrice
+          const purchaseTs = new Date(p.date).getTime()
+          const shares = (p.amountKRW * 10000) / p.fxRate / purchasePrice
+          // 매수일~오늘 사이를 선형 보간 (역사적 API 없이 추이 근사)
+          const progress = todayTs > purchaseTs
+            ? Math.min(1, (monthTs - purchaseTs) / (todayTs - purchaseTs))
+            : 1
+          const interpPrice = purchasePrice + progress * (currentPrice - purchasePrice)
+          totalValue += shares * Math.max(interpPrice, 0) * currentFxRate
+        })
+
+        row[ticker] = Math.round(totalValue)
+        row[`${ticker}_dot`] = purchaseMonthsByTicker[ticker]?.has(month) ?? false
+      })
+
+      return row
+    })
+
+    return { data, tickers, purchaseMonthsByTicker }
   }
 
   const totalInvested = purchases.reduce((s, p) => s + p.amountKRW * 10000, 0)
@@ -422,6 +484,55 @@ export default function PortfolioPage() {
                     </div>
                   )}
                 </div>
+
+                {/* ── 수익 추이 라인 차트 ── */}
+                {purchases.length < 2 ? (
+                  <div className="card p-6 text-center text-xs text-slate-400">
+                    매수 기록을 2개 이상 추가하면 수익 추이 차트가 표시됩니다
+                  </div>
+                ) : (() => {
+                  const { data, tickers } = buildGrowthChartData()
+                  const fmtAxis = (v: number) => v >= 1e8 ? `${(v / 1e8).toFixed(0)}억` : `${(v / 1e4).toFixed(0)}만`
+                  // X축 라벨: 많으면 간격 조정
+                  const interval = data.length > 24 ? 5 : data.length > 12 ? 2 : 0
+                  return (
+                    <div className="card p-4">
+                      <h3 className="text-sm font-semibold text-slate-700 mb-4">수익 추이</h3>
+                      <ResponsiveContainer width="100%" height={240}>
+                        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                          <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#94a3b8' }} interval={interval} />
+                          <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 10, fill: '#94a3b8' }} width={48} />
+                          <Tooltip
+                            formatter={(v: number, name: string) => [fmtKRW(v), name]}
+                            labelStyle={{ fontSize: 11, color: '#64748b' }}
+                            contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: 12 }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                          {tickers.map(t => {
+                            const color = ETF_DATA[t]?.color ?? '#94a3b8'
+                            return (
+                              <Line key={t} type="monotone" dataKey={t}
+                                stroke={color} strokeWidth={2.5}
+                                connectNulls
+                                isAnimationActive={false}
+                                dot={(dotProps: any) => {
+                                  const { cx, cy, payload, index } = dotProps
+                                  if (!payload[`${t}_dot`]) return <circle key={index} r={0} cx={cx} cy={cy} fill="none" />
+                                  return <circle key={index} cx={cx} cy={cy} r={5} fill={color} stroke="white" strokeWidth={2} />
+                                }}
+                                activeDot={{ r: 4 }}
+                              />
+                            )
+                          })}
+                        </LineChart>
+                      </ResponsiveContainer>
+                      <p className="text-xs text-slate-400 text-center mt-2">
+                        * 매수가↔현재가 선형 보간 추이 · 실제 주가 흐름과 다를 수 있음
+                      </p>
+                    </div>
+                  )
+                })()}
 
                 <p className="text-xs text-slate-400 text-center">
                   * 현재 기준가 + 실시간 환율 기반 추정치 · 이 기기 브라우저에 저장됩니다
