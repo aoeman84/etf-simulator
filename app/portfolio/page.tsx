@@ -46,6 +46,7 @@ export default function PortfolioPage() {
   const [chartPeriod, setChartPeriod] = useState<'1M'|'6M'|'1Y'|'5Y'|'10Y'>('1Y')
   const [priceHistoryByPeriod, setPriceHistoryByPeriod] = useState<Record<string, Record<string, { date: string; close: number }[]>>>({})
   const [chartLoading, setChartLoading] = useState(false)
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({})
 
   useEffect(() => {
     fetch('/api/portfolio')
@@ -67,8 +68,20 @@ export default function PortfolioPage() {
     }).catch(() => {})
   }, [])
 
-  // ── 종목 또는 기간 변경 시 주가 히스토리 fetch ──
+  // ── 종목 변경 시 현재 실시간 가격 fetch ──
   const uniqueTickersKey = [...new Set(purchases.map(p => p.ticker))].sort().join(',')
+  useEffect(() => {
+    if (!uniqueTickersKey) return
+    uniqueTickersKey.split(',').forEach(ticker => {
+      fetch(`/api/etf-price?ticker=${ticker}`)
+        .then(r => r.json())
+        .then(d => { if (d.price) setLivePrices(prev => ({ ...prev, [ticker]: d.price })) })
+        .catch(() => {})
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uniqueTickersKey])
+
+  // ── 종목 또는 기간 변경 시 주가 히스토리 fetch ──
   const PERIOD_DAYS: Record<string, number> = { '1M': 30, '6M': 180, '1Y': 365, '5Y': 1825, '10Y': 3650 }
   const PERIOD_INTERVAL: Record<string, string> = { '1M': '1d', '6M': '1d', '1Y': '1d', '5Y': '1wk', '10Y': '1wk' }
   const periodFetchKey = `${uniqueTickersKey}__${chartPeriod}`
@@ -198,11 +211,13 @@ export default function PortfolioPage() {
   function calcReturn(p: Purchase) {
     const etf = ETF_DATA[p.ticker]
     const purchasePrice = p.etfPrice ?? etf.price
+    const currentPrice = livePrices[p.ticker] ?? etf.price // 실시간 가격 우선
     const usdInvested = (p.amountKRW * 10000) / p.fxRate
     const shares = usdInvested / purchasePrice
-    const currentValueKRW = shares * etf.price * currentFxRate
+    const currentValueKRW = shares * currentPrice * currentFxRate
+    // 수익률: 주가 변동만 (환율 효과 제거)
+    const gainPct = (currentPrice - purchasePrice) / purchasePrice * 100
     const gainKRW = currentValueKRW - p.amountKRW * 10000
-    const gainPct = (gainKRW / (p.amountKRW * 10000)) * 100
     return { currentValueKRW, gainKRW, gainPct }
   }
 
@@ -500,7 +515,8 @@ export default function PortfolioPage() {
                           const weight = totalCurrent > 0 ? (v.current / totalCurrent) * 100 : 0
                           const etf = ETF_DATA[t]
                           const avgPrice = v.totalShares > 0 ? v.totalUSD / v.totalShares : null
-                          const avgPriceGainPct = avgPrice && etf?.price ? ((etf.price - avgPrice) / avgPrice) * 100 : null
+                          const currentPrice = livePrices[t] ?? etf?.price
+                          const avgPriceGainPct = avgPrice && currentPrice ? ((currentPrice - avgPrice) / avgPrice) * 100 : null
                           return (
                             <div key={t}>
                               <div className="flex items-center gap-3 mb-1">
@@ -585,7 +601,8 @@ export default function PortfolioPage() {
                             tickFormatter={xFmt}
                             interval={xInterval}
                             height={40}
-                            tick={{ fontSize: 10, fill: '#94a3b8', angle: -45, textAnchor: 'end', dy: 4 }}
+                            angle={-45}
+                            tick={{ fontSize: 10, fill: '#94a3b8', textAnchor: 'end' }}
                           />
                           <YAxis
                             tickFormatter={fmtPct}
