@@ -548,7 +548,17 @@ export default function PortfolioPage() {
                   if (!chartResult) return null
                   const { data, tickers, purchasesByDate } = chartResult
                   const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`
-                  const xInterval = Math.max(0, Math.floor(data.length / 12) - 1)
+                  // 기간별 X축 틱 간격 & 날짜 포맷
+                  const xTickInterval: Record<string, number> = { '1M': 7, '6M': 21, '1Y': 42, '5Y': 26, '10Y': 52 }
+                  const xTickFmt: Record<string, (d: string) => string> = {
+                    '1M':  d => d.slice(5).replace('-', '/'),   // MM/DD
+                    '6M':  d => d.slice(2, 7).replace('-', '.'), // YY.MM
+                    '1Y':  d => d.slice(2, 7).replace('-', '.'), // YY.MM
+                    '5Y':  d => d.slice(0, 4),                  // YYYY
+                    '10Y': d => d.slice(0, 4),                  // YYYY
+                  }
+                  const xInterval = xTickInterval[chartPeriod] ?? 21
+                  const xFmt = xTickFmt[chartPeriod] ?? (d => d.slice(0, 7))
                   const periods: ('1M'|'6M'|'1Y'|'5Y'|'10Y')[] = ['1M','6M','1Y','5Y','10Y']
                   return (
                     <div className="card p-4">
@@ -567,14 +577,15 @@ export default function PortfolioPage() {
                         </div>
                       </div>
                       <p className="text-xs text-slate-400 mb-3">기간 시작 대비 % 변동 · Yahoo Finance 실제 종가</p>
-                      <ResponsiveContainer width="100%" height={250}>
-                        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                      <ResponsiveContainer width="100%" height={260}>
+                        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 8, left: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                           <XAxis
                             dataKey="date"
-                            tickFormatter={d => d.slice(0, 7)}
+                            tickFormatter={xFmt}
                             interval={xInterval}
-                            tick={{ fontSize: 10, fill: '#94a3b8' }}
+                            height={40}
+                            tick={{ fontSize: 10, fill: '#94a3b8', angle: -45, textAnchor: 'end', dy: 4 }}
                           />
                           <YAxis
                             tickFormatter={fmtPct}
