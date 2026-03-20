@@ -19,6 +19,7 @@ interface Purchase {
   ticker: string
   amountKRW: number
   fxRate: number
+  etfPrice?: number
 }
 
 type SubTab = 'saved' | 'records'
@@ -32,9 +33,11 @@ export default function PortfolioPage() {
   const [portfolios, setPortfolios] = useState<SavedPortfolio[]>([])
   const [loadingPF, setLoadingPF] = useState(true)
   const [purchases, setPurchases] = useState<Purchase[]>([])
-  const [form, setForm] = useState({ date: '', ticker: 'SCHD', amount: '', fxRate: '' })
+  const [form, setForm] = useState({ date: '', ticker: 'SCHD', amount: '', fxRate: '', etfPrice: '' })
   const [fxLoading, setFxLoading] = useState(false)
   const [fxAutoLoaded, setFxAutoLoaded] = useState(false)
+  const [etfPriceLoading, setEtfPriceLoading] = useState(false)
+  const [etfPriceAutoLoaded, setEtfPriceAutoLoaded] = useState(false)
   const [currentFxRate, setCurrentFxRate] = useState(1350)
   const [toast, setToast] = useState('')
 
@@ -58,9 +61,25 @@ export default function PortfolioPage() {
     }).catch(() => {})
   }, [])
 
+  async function fetchEtfPriceForDate(date: string, ticker: string) {
+    if (!date || new Date(date) > new Date()) return
+    setEtfPriceLoading(true)
+    setEtfPriceAutoLoaded(false)
+    try {
+      const res = await fetch(`/api/etf-price?ticker=${ticker}&date=${date}`)
+      const data = await res.json()
+      if (data.price && !data.fallback) {
+        setForm(f => ({ ...f, etfPrice: String(data.price) }))
+        setEtfPriceAutoLoaded(true)
+      }
+    } catch {}
+    setEtfPriceLoading(false)
+  }
+
   async function handleDateChange(date: string) {
     setForm(f => ({ ...f, date }))
     setFxAutoLoaded(false)
+    setEtfPriceAutoLoaded(false)
     if (!date) return
     if (new Date(date) > new Date()) return
     setFxLoading(true)
@@ -73,6 +92,13 @@ export default function PortfolioPage() {
       }
     } catch {}
     setFxLoading(false)
+    fetchEtfPriceForDate(date, form.ticker)
+  }
+
+  async function handleTickerChange(ticker: string) {
+    setForm(f => ({ ...f, ticker, etfPrice: '' }))
+    setEtfPriceAutoLoaded(false)
+    if (form.date) fetchEtfPriceForDate(form.date, ticker)
   }
 
   function savePurchases(list: Purchase[]) {
@@ -87,16 +113,19 @@ export default function PortfolioPage() {
 
   function addPurchase() {
     if (!form.date || !form.amount) return
+    const etfPrice = Number(form.etfPrice) || undefined
     const next = [...purchases, {
       id: Date.now().toString(),
       date: form.date,
       ticker: form.ticker,
       amountKRW: Number(form.amount),
       fxRate: Number(form.fxRate) || currentFxRate,
+      etfPrice,
     }]
     savePurchases(next)
-    setForm(f => ({ ...f, date: '', amount: '', fxRate: '' }))
+    setForm(f => ({ ...f, date: '', amount: '', fxRate: '', etfPrice: '' }))
     setFxAutoLoaded(false)
+    setEtfPriceAutoLoaded(false)
     showToastMsg('매수 기록이 추가됐어요')
   }
 
@@ -128,8 +157,9 @@ export default function PortfolioPage() {
 
   function calcReturn(p: Purchase) {
     const etf = ETF_DATA[p.ticker]
+    const purchasePrice = p.etfPrice ?? etf.price
     const usdInvested = (p.amountKRW * 10000) / p.fxRate
-    const shares = usdInvested / etf.price
+    const shares = usdInvested / purchasePrice
     const currentValueKRW = shares * etf.price * currentFxRate
     const gainKRW = currentValueKRW - p.amountKRW * 10000
     const gainPct = (gainKRW / (p.amountKRW * 10000)) * 100
@@ -270,7 +300,7 @@ export default function PortfolioPage() {
                 <div>
                   <label className="text-xs text-slate-500 mb-1 block">ETF</label>
                   <select className="input text-sm" value={form.ticker}
-                    onChange={e => setForm(f => ({ ...f, ticker: e.target.value }))}>
+                    onChange={e => handleTickerChange(e.target.value)}>
                     {Object.keys(ETF_DATA).map(t => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
@@ -290,6 +320,16 @@ export default function PortfolioPage() {
                     onChange={e => setForm(f => ({ ...f, fxRate: e.target.value }))}
                     className="input text-sm" inputMode="numeric" />
                 </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 flex items-center gap-1">
+                    당시 ETF 가격 ($)
+                    {etfPriceLoading && <span className="text-blue-400 text-xs animate-pulse">● 조회중</span>}
+                    {!etfPriceLoading && etfPriceAutoLoaded && <span className="text-green-500 text-xs">● 자동</span>}
+                  </label>
+                  <input type="number" placeholder="날짜 선택 시 자동입력" value={form.etfPrice}
+                    onChange={e => setForm(f => ({ ...f, etfPrice: e.target.value }))}
+                    className="input text-sm" inputMode="decimal" step="0.01" />
+                </div>
               </div>
               <button onClick={addPurchase} disabled={!form.date || !form.amount}
                 className="btn-primary w-full text-sm disabled:opacity-40">
@@ -299,9 +339,44 @@ export default function PortfolioPage() {
 
             {purchases.length > 0 && (
               <>
+                <div className="card overflow-hidden">
+                  <div className="px-4 py-3 border-b border-slate-100">
+                    <h3 className="text-sm font-medium text-slate-700">매수 내역</h3>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {purchases.slice().sort((a, b) => b.date.localeCompare(a.date)).map(p => {
+                      const { currentValueKRW, gainPct } = calcReturn(p)
+                      return (
+                        <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
+                          <div className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: ETF_DATA[p.ticker]?.color ?? '#94a3b8' }} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 text-sm flex-wrap">
+                              <span className="font-semibold">{p.ticker}</span>
+                              <span className="text-slate-400 text-xs">{p.date}</span>
+                              <span className="text-slate-600">{p.amountKRW.toLocaleString()}만원</span>
+                              {p.etfPrice
+                                ? <span className="text-slate-400 text-xs">${p.etfPrice}</span>
+                                : <span className="text-slate-300 text-xs">{p.fxRate.toLocaleString()}원</span>}
+                            </div>
+                            <div className="flex gap-3 text-xs mt-0.5">
+                              <span className="text-slate-400">현재 {fmtKRW(currentValueKRW)}</span>
+                              <span className={gainPct >= 0 ? 'text-blue-500 font-semibold' : 'text-red-500 font-semibold'}>
+                                {gainPct >= 0 ? '▲' : '▼'} {Math.abs(gainPct).toFixed(1)}%
+                              </span>
+                            </div>
+                          </div>
+                          <button onClick={() => removePurchase(p.id)}
+                            className="text-slate-300 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0">✕</button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
                 <div className="card p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-semibold text-slate-700">전체 요약</h3>
+                    <h3 className="text-sm font-semibold text-slate-700">수익률 요약</h3>
                     <span className="text-xs text-slate-400">현재 환율 {currentFxRate.toLocaleString()}원 기준</span>
                   </div>
                   <div className="grid grid-cols-3 gap-3 text-center">
@@ -321,13 +396,13 @@ export default function PortfolioPage() {
                     </div>
                   </div>
 
-                  {Object.keys(tickerSummary).length > 1 && (
+                  {Object.keys(tickerSummary).length > 0 && (
                     <div className="mt-4 pt-4 border-t border-slate-100">
-                      <div className="text-xs text-slate-500 mb-2">ETF별 현황</div>
+                      <div className="text-xs text-slate-500 mb-2">ETF별 수익률 breakdown</div>
                       <div className="space-y-2">
                         {Object.entries(tickerSummary).map(([t, v]) => {
                           const gainPct = ((v.current - v.invested) / v.invested) * 100
-                          const weight = (v.current / totalCurrent) * 100
+                          const weight = totalCurrent > 0 ? (v.current / totalCurrent) * 100 : 0
                           const etf = ETF_DATA[t]
                           return (
                             <div key={t} className="flex items-center gap-3">
@@ -348,38 +423,6 @@ export default function PortfolioPage() {
                   )}
                 </div>
 
-                <div className="card overflow-hidden">
-                  <div className="px-4 py-3 border-b border-slate-100">
-                    <h3 className="text-sm font-medium text-slate-700">매수 내역</h3>
-                  </div>
-                  <div className="divide-y divide-slate-100">
-                    {purchases.slice().sort((a, b) => b.date.localeCompare(a.date)).map(p => {
-                      const { currentValueKRW, gainPct } = calcReturn(p)
-                      return (
-                        <div key={p.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
-                          <div className="w-2 h-2 rounded-full flex-shrink-0"
-                            style={{ background: ETF_DATA[p.ticker]?.color ?? '#94a3b8' }} />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 text-sm flex-wrap">
-                              <span className="font-semibold">{p.ticker}</span>
-                              <span className="text-slate-400 text-xs">{p.date}</span>
-                              <span className="text-slate-600">{p.amountKRW.toLocaleString()}만원</span>
-                              <span className="text-slate-300 text-xs">{p.fxRate.toLocaleString()}원</span>
-                            </div>
-                            <div className="flex gap-3 text-xs mt-0.5">
-                              <span className="text-slate-400">현재 {fmtKRW(currentValueKRW)}</span>
-                              <span className={gainPct >= 0 ? 'text-blue-500 font-semibold' : 'text-red-500 font-semibold'}>
-                                {gainPct >= 0 ? '▲' : '▼'} {Math.abs(gainPct).toFixed(1)}%
-                              </span>
-                            </div>
-                          </div>
-                          <button onClick={() => removePurchase(p.id)}
-                            className="text-slate-300 hover:text-red-400 transition-colors text-lg leading-none flex-shrink-0">✕</button>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
                 <p className="text-xs text-slate-400 text-center">
                   * 현재 기준가 + 실시간 환율 기반 추정치 · 이 기기 브라우저에 저장됩니다
                 </p>

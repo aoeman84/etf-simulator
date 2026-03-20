@@ -1,6 +1,6 @@
 {
   "name": "etf-simulator",
-  "version": "1.0.0",
+  "version": "1.96.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
