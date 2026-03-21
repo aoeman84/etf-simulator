@@ -30,6 +30,18 @@ export default function LoginPage() {
           <button type="submit" className="btn-primary w-full" disabled={loading}>{loading?'로그인 중...':'로그인'}</button>
         </form>
         <p className="text-center text-sm text-slate-500 mt-6">계정이 없으신가요? <Link href="/register" className="text-blue-600 hover:underline font-medium">회원가입</Link></p>
+        <div className="flex items-center gap-3 my-5">
+          <div className="flex-1 h-px bg-slate-200" />
+          <span className="text-xs text-slate-400">또는</span>
+          <div className="flex-1 h-px bg-slate-200" />
+        </div>
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="w-full py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-500 hover:bg-slate-50 transition-colors"
+        >
+          로그인 없이 시작하기 →
+        </button>
+        <p className="text-center text-xs text-slate-400 mt-2">이 기기에만 저장됩니다. 로그인하면 모든 기기에서 동기화됩니다.</p>
       </div>
       <div className="mt-8 text-center space-y-1">
         <p className="text-sm font-medium text-slate-500">Designed &amp; Built by <span className="text-blue-600 font-semibold">Chang Bi</span></p>
