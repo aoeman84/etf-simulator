@@ -311,7 +311,7 @@ export default function Sim2Page() {
 
                   {/* 세금 박스 */}
                   <div className="flex-1 bg-red-50 rounded-xl p-4 flex flex-col items-center justify-center text-center min-h-[96px]">
-                    <div className="text-sm font-semibold text-red-500 mb-1.5">
+                    <div className="text-lg font-bold text-red-500 mb-1.5">
                       -{fmtKRW(Math.round(last.tax.totalDivTaxKRW / 12))}/월 세금
                     </div>
                     {last.tax.exceedsThreshold && (
@@ -319,12 +319,12 @@ export default function Sim2Page() {
                     )}
                     <div className="space-y-0.5 text-left w-full px-1">
                       {last.tax.withholdingTaxKRW > 0 && (
-                        <div className="text-sm text-slate-500">
+                        <div className="text-xs text-slate-500">
                           › 배당세(원천징수) -{fmtKRW(Math.round(last.tax.withholdingTaxKRW / 12))}
                         </div>
                       )}
                       {last.tax.surchargeKRW > 0 && (
-                        <div className="text-sm text-orange-500 font-medium">
+                        <div className="text-xs text-orange-500 font-medium">
                           › 종합과세 추가분 -{fmtKRW(Math.round(last.tax.surchargeKRW / 12))}
                         </div>
                       )}
