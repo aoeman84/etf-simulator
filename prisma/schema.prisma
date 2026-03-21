@@ -8,12 +8,25 @@ datasource db {
 }
 
 model User {
-  id         String      @id @default(cuid())
-  email      String      @unique
-  name       String?
-  password   String
-  createdAt  DateTime    @default(now())
-  portfolios Portfolio[]
+  id              String           @id @default(cuid())
+  email           String           @unique
+  name            String?
+  password        String
+  createdAt       DateTime         @default(now())
+  portfolios      Portfolio[]
+  purchaseRecords PurchaseRecord[]
+}
+
+model PurchaseRecord {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ticker    String
+  date      String
+  amountKRW Int
+  fxRate    Int
+  etfPrice  Float?
+  createdAt DateTime @default(now())
 }
 
 model Portfolio {

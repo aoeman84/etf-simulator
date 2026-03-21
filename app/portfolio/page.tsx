@@ -36,6 +36,7 @@ export default function PortfolioPage() {
   const [portfolios, setPortfolios] = useState<SavedPortfolio[]>([])
   const [loadingPF, setLoadingPF] = useState(true)
   const [purchases, setPurchases] = useState<Purchase[]>([])
+  const [loadingRecords, setLoadingRecords] = useState(true)
   const [form, setForm] = useState({ date: '', ticker: 'SCHD', amount: '', fxRate: '', etfPrice: '' })
   const [fxLoading, setFxLoading] = useState(false)
   const [fxAutoLoaded, setFxAutoLoaded] = useState(false)
@@ -56,10 +57,10 @@ export default function PortfolioPage() {
   }, [])
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('etf_actual_records')
-      if (saved) setPurchases(JSON.parse(saved))
-    } catch {}
+    fetch('/api/purchase')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setPurchases(data); setLoadingRecords(false) })
+      .catch(() => setLoadingRecords(false))
   }, [])
 
   useEffect(() => {
@@ -154,36 +155,39 @@ export default function PortfolioPage() {
     if (form.date) fetchEtfPriceForDate(form.date, ticker)
   }
 
-  function savePurchases(list: Purchase[]) {
-    setPurchases(list)
-    try { localStorage.setItem('etf_actual_records', JSON.stringify(list)) } catch {}
-  }
-
   function showToastMsg(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(''), 2500)
   }
 
-  function addPurchase() {
+  async function addPurchase() {
     if (!form.date || !form.amount) return
     const etfPrice = Number(form.etfPrice) || undefined
-    const next = [...purchases, {
-      id: Date.now().toString(),
-      date: form.date,
-      ticker: form.ticker,
-      amountKRW: Number(form.amount),
-      fxRate: Number(form.fxRate) || currentFxRate,
-      etfPrice,
-    }]
-    savePurchases(next)
-    setForm(f => ({ ...f, date: '', amount: '', fxRate: '', etfPrice: '' }))
-    setFxAutoLoaded(false)
-    setEtfPriceAutoLoaded(false)
-    showToastMsg('매수 기록이 추가됐어요')
+    const fxRate = Number(form.fxRate) || currentFxRate
+    const res = await fetch('/api/purchase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ticker: form.ticker,
+        date: form.date,
+        amountKRW: Number(form.amount),
+        fxRate,
+        etfPrice,
+      }),
+    })
+    if (res.ok) {
+      const record = await res.json()
+      setPurchases(prev => [record, ...prev])
+      setForm(f => ({ ...f, date: '', amount: '', fxRate: '', etfPrice: '' }))
+      setFxAutoLoaded(false)
+      setEtfPriceAutoLoaded(false)
+      showToastMsg('매수 기록이 추가됐어요')
+    }
   }
 
-  function removePurchase(id: string) {
-    savePurchases(purchases.filter(p => p.id !== id))
+  async function removePurchase(id: string) {
+    await fetch(`/api/purchase/${id}`, { method: 'DELETE' })
+    setPurchases(prev => prev.filter(p => p.id !== id))
   }
 
   async function deletePortfolio(id: string) {
@@ -397,6 +401,10 @@ export default function PortfolioPage() {
         {/* ─── 실제 매수 기록 ─── */}
         {subTab === 'records' && (
           <div className="space-y-4">
+            {loadingRecords && (
+              <div className="text-center py-8 text-slate-400 text-sm animate-pulse">불러오는 중...</div>
+            )}
+            {!loadingRecords && <>
             <div className="card p-5">
               <h3 className="text-sm font-semibold text-slate-700 mb-4">매수 내역 추가</h3>
               <div className="grid grid-cols-2 gap-3 mb-3">
@@ -649,7 +657,7 @@ export default function PortfolioPage() {
                 })()}
 
                 <p className="text-xs text-slate-400 text-center">
-                  * 현재 기준가 + 실시간 환율 기반 추정치 · 이 기기 브라우저에 저장됩니다
+                  * 현재 기준가 + 실시간 환율 기반 추정치
                 </p>
               </>
             )}
@@ -661,6 +669,7 @@ export default function PortfolioPage() {
                 <div className="text-slate-400 text-xs">날짜 선택 시 당시 환율을 자동으로 불러와요</div>
               </div>
             )}
+            </>}
           </div>
         )}
       </main>
