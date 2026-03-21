@@ -51,11 +51,13 @@ export default function PortfolioPage() {
   const [livePrices, setLivePrices] = useState<Record<string, number>>({})
 
   useEffect(() => {
+    if (status === 'loading') return
+    if (!isLoggedIn) { setLoadingPF(false); return }
     fetch('/api/portfolio')
       .then(r => r.json())
-      .then(data => { setPortfolios(data); setLoadingPF(false) })
+      .then(data => { if (Array.isArray(data)) setPortfolios(data); setLoadingPF(false) })
       .catch(() => setLoadingPF(false))
-  }, [])
+  }, [status, isLoggedIn])
 
   useEffect(() => {
     if (status === 'loading') return
@@ -363,7 +365,16 @@ export default function PortfolioPage() {
         {/* ─── 저장된 포트폴리오 ─── */}
         {subTab === 'saved' && (
           <div>
-            {loadingPF ? (
+            {!isLoggedIn ? (
+              <div className="card p-10 text-center">
+                <div className="text-3xl mb-3">🔒</div>
+                <div className="text-slate-600 text-sm font-medium mb-1">로그인이 필요한 기능이에요</div>
+                <div className="text-slate-400 text-xs mb-4">포트폴리오 저장/불러오기는 로그인 후 이용할 수 있어요</div>
+                <Link href="/login" className="inline-block text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-5 py-2 rounded-xl transition-colors">
+                  로그인하기
+                </Link>
+              </div>
+            ) : loadingPF ? (
               <div className="text-center py-12 text-slate-400 text-sm">불러오는 중...</div>
             ) : portfolios.length === 0 ? (
               <div className="card p-10 text-center">
