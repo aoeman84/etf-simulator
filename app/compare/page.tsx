@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import CompareChart from '@/components/charts/CompareChart'
@@ -23,7 +22,6 @@ const DEFAULT_SCENARIO: ScenarioSettings = {
 
 export default function ComparePage() {
   const { status } = useSession()
-  if (status === 'unauthenticated') redirect('/login')
 
   const [selected, setSelected] = usePersistedState<string[]>('compare_selected', ['SCHD', 'VOO', 'QQQ'])
   const [monthly, setMonthly] = usePersistedState<number>('compare_monthly', 500)

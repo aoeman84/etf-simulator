@@ -1,7 +1,6 @@
 'use client'
 import { useMemo } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
 import {
   BarChart, Bar, Cell, LineChart, Line,
   XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, ReferenceLine, Legend,
@@ -36,7 +35,6 @@ function fmtPct(v: number): string {
 
 export default function BacktestPage() {
   const { status } = useSession()
-  if (status === 'unauthenticated') redirect('/login')
 
   const [selectedTickers, setSelectedTickers] = usePersistedState<string[]>('bt_tickers', ['QQQ'])
   const [startYear, setStartYear] = usePersistedState<number>('bt_startYear', 2010)

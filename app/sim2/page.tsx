@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import TaxPanel from '@/components/TaxPanel'
@@ -22,7 +21,6 @@ const DEFAULT_SCENARIO: ScenarioSettings = {
 
 export default function Sim2Page() {
   const { status } = useSession()
-  if (status === 'unauthenticated') redirect('/login')
 
   const [targetDiv, setTargetDiv] = usePersistedState<number>('sim2_targetDiv', 300)
   const [ticker, setTicker] = usePersistedState<string>('sim2_ticker', 'SCHD')

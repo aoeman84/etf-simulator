@@ -1,7 +1,6 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect } from 'next/navigation'
 import {
   ComposedChart, Area, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid,
 } from 'recharts'
@@ -65,7 +64,6 @@ function singleEtfAlloc(ticker: string): EtfAlloc[] {
 
 export default function SimKPage() {
   const { status } = useSession()
-  if (status === 'unauthenticated') redirect('/login')
 
   const [mode, setMode] = usePersistedState<'monthly' | 'annual'>('simk_mode', 'monthly')
   const [isaState, setIsaState] = usePersistedState<AccountState>('simk_isa_v2', {
