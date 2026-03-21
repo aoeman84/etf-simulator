@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { signOut } from 'next-auth/react'
+import { signOut, useSession } from 'next-auth/react'
 import { ReactNode } from 'react'
 
 interface NavbarProps {
@@ -19,6 +19,7 @@ const TABS = [
 
 export default function Navbar({ titleSlot }: NavbarProps) {
   const pathname = usePathname()
+  const { status } = useSession()
 
   return (
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
@@ -40,12 +41,21 @@ export default function Navbar({ titleSlot }: NavbarProps) {
             {titleSlot && <div className="flex-shrink-0">{titleSlot}</div>}
           </div>
 
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-all whitespace-nowrap flex-shrink-0"
-          >
-            로그아웃
-          </button>
+          {status === 'authenticated' ? (
+            <button
+              onClick={() => signOut({ callbackUrl: '/login' })}
+              className="text-xs text-slate-400 hover:text-slate-600 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-all whitespace-nowrap flex-shrink-0"
+            >
+              로그아웃
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              className="text-xs text-blue-600 hover:text-blue-700 px-2 py-1.5 rounded-lg hover:bg-blue-50 transition-all whitespace-nowrap flex-shrink-0"
+            >
+              로그인
+            </Link>
+          )}
         </div>
 
         <div className="flex gap-0.5 -mb-px overflow-x-auto scrollbar-none">
