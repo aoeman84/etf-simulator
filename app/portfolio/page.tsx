@@ -1,7 +1,8 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { redirect, useRouter } from 'next/navigation'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import Footer from '@/components/Footer'
 import { ETF_DATA, ETF_DATA_UPDATED_AT, fmtKRW } from '@/lib/simulator'
@@ -28,8 +29,8 @@ interface Purchase {
 type SubTab = 'saved' | 'records'
 
 export default function PortfolioPage() {
-  const { status } = useSession()
-  if (status === 'unauthenticated') redirect('/login')
+  const { data: session, status } = useSession()
+  const isLoggedIn = status === 'authenticated'
 
   const router = useRouter()
   const [subTab, setSubTab] = useState<SubTab>('saved')
@@ -57,11 +58,20 @@ export default function PortfolioPage() {
   }, [])
 
   useEffect(() => {
-    fetch('/api/purchase')
-      .then(r => r.json())
-      .then(data => { if (Array.isArray(data)) setPurchases(data); setLoadingRecords(false) })
-      .catch(() => setLoadingRecords(false))
-  }, [])
+    if (status === 'loading') return
+    if (isLoggedIn) {
+      fetch('/api/purchase')
+        .then(r => r.json())
+        .then(data => { if (Array.isArray(data)) setPurchases(data); setLoadingRecords(false) })
+        .catch(() => setLoadingRecords(false))
+    } else {
+      try {
+        const saved = localStorage.getItem('etf_actual_records')
+        if (saved) setPurchases(JSON.parse(saved))
+      } catch {}
+      setLoadingRecords(false)
+    }
+  }, [status, isLoggedIn])
 
   useEffect(() => {
     fetch('/api/fx-rate').then(r => r.json()).then(d => {
@@ -164,20 +174,38 @@ export default function PortfolioPage() {
     if (!form.date || !form.amount) return
     const etfPrice = Number(form.etfPrice) || undefined
     const fxRate = Number(form.fxRate) || currentFxRate
-    const res = await fetch('/api/purchase', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ticker: form.ticker,
+    if (isLoggedIn) {
+      const res = await fetch('/api/purchase', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticker: form.ticker,
+          date: form.date,
+          amountKRW: Number(form.amount),
+          fxRate,
+          etfPrice,
+        }),
+      })
+      if (res.ok) {
+        const record = await res.json()
+        setPurchases(prev => [record, ...prev])
+        setForm(f => ({ ...f, date: '', amount: '', fxRate: '', etfPrice: '' }))
+        setFxAutoLoaded(false)
+        setEtfPriceAutoLoaded(false)
+        showToastMsg('매수 기록이 추가됐어요')
+      }
+    } else {
+      const newRecord: Purchase = {
+        id: Date.now().toString(),
         date: form.date,
+        ticker: form.ticker,
         amountKRW: Number(form.amount),
         fxRate,
         etfPrice,
-      }),
-    })
-    if (res.ok) {
-      const record = await res.json()
-      setPurchases(prev => [record, ...prev])
+      }
+      const next = [newRecord, ...purchases]
+      setPurchases(next)
+      try { localStorage.setItem('etf_actual_records', JSON.stringify(next)) } catch {}
       setForm(f => ({ ...f, date: '', amount: '', fxRate: '', etfPrice: '' }))
       setFxAutoLoaded(false)
       setEtfPriceAutoLoaded(false)
@@ -186,7 +214,11 @@ export default function PortfolioPage() {
   }
 
   async function removePurchase(id: string) {
-    await fetch(`/api/purchase/${id}`, { method: 'DELETE' })
+    if (isLoggedIn) {
+      await fetch(`/api/purchase/${id}`, { method: 'DELETE' })
+    } else {
+      try { localStorage.setItem('etf_actual_records', JSON.stringify(purchases.filter(p => p.id !== id))) } catch {}
+    }
     setPurchases(prev => prev.filter(p => p.id !== id))
   }
 
@@ -405,6 +437,23 @@ export default function PortfolioPage() {
               <div className="text-center py-8 text-slate-400 text-sm animate-pulse">불러오는 중...</div>
             )}
             {!loadingRecords && <>
+            {/* 동기화 상태 배너 */}
+            {isLoggedIn ? (
+              <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-xl text-xs text-green-600">
+                <span>☁️</span>
+                <span>클라우드 동기화 중 · <span className="font-medium">{session?.user?.email}</span></span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-2 px-3 py-2 bg-slate-100 rounded-xl">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span>💾</span>
+                  <span>이 기기에만 저장됩니다 · 로그인하면 모든 기기에서 동기화</span>
+                </div>
+                <Link href="/login" className="text-xs font-medium text-blue-600 bg-white border border-blue-200 hover:bg-blue-50 px-2.5 py-1 rounded-lg flex-shrink-0 transition-colors">
+                  로그인
+                </Link>
+              </div>
+            )}
             <div className="card p-5">
               <h3 className="text-sm font-semibold text-slate-700 mb-4">매수 내역 추가</h3>
               <div className="grid grid-cols-2 gap-3 mb-3">
